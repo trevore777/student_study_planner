@@ -1,0 +1,35 @@
+<section class="page-header">
+  <div>
+    <h1>Class Summary</h1>
+    <p class="lede">Simple teacher overview of published homework by class.</p>
+  </div>
+</section>
+
+<section class="card">
+  <% 
+    const classMap = {};
+    homeworkItems.forEach(item => {
+      if (!classMap[item.className]) classMap[item.className] = [];
+      classMap[item.className].push(item);
+    });
+    const classNames = Object.keys(classMap).sort();
+  %>
+
+  <% if (!classNames.length) { %>
+    <p>No homework data available yet.</p>
+  <% } else { %>
+    <div class="task-list">
+      <% classNames.forEach(className => { %>
+        <article class="task-card">
+          <h3><%= className %></h3>
+          <p class="muted">Posted homework items: <strong><%= classMap[className].length %></strong></p>
+          <ul class="tight-list">
+            <% classMap[className].forEach(item => { %>
+              <li><%= item.subject %> — <%= item.title %> (Due <%= item.dueDate %>)</li>
+            <% }) %>
+          </ul>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>

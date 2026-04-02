@@ -31,6 +31,90 @@ function isDueToday(task) {
   return task.status !== 'done' && task.dueDate === todayISO();
 }
 
+function formatStreakLabel(days) {
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
+
+function dateOnly(value) {
+  return new Date(value).toISOString().split('T')[0];
+}
+
+function getLast7Dates() {
+  const dates = [];
+  const today = new Date();
+
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+
+  return dates;
+}
+
+function calculateCurrentStreak(sortedDatesDesc) {
+  if (!sortedDatesDesc.length) return 0;
+
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const uniqueDates = [...new Set(sortedDatesDesc)];
+  let checkDate = new Date(today);
+
+  for (let i = 0; i < uniqueDates.length; i += 1) {
+    const expected = checkDate.toISOString().split('T')[0];
+
+    if (uniqueDates[i] === expected) {
+      streak += 1;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else if (i === 0) {
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayISO = yesterday.toISOString().split('T')[0];
+
+      if (uniqueDates[i] === yesterdayISO) {
+        checkDate = new Date(yesterday);
+        streak += 1;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+function calculateBestStreak(sortedDatesAsc) {
+  if (!sortedDatesAsc.length) return 0;
+
+  const uniqueDates = [...new Set(sortedDatesAsc)];
+  let best = 1;
+  let current = 1;
+
+  for (let i = 1; i < uniqueDates.length; i += 1) {
+    const previous = new Date(uniqueDates[i - 1]);
+    const currentDate = new Date(uniqueDates[i]);
+
+    previous.setHours(0, 0, 0, 0);
+    currentDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((currentDate - previous) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      current += 1;
+      if (current > best) best = current;
+    } else {
+      current = 1;
+    }
+  }
+
+  return best;
+}
+
 async function populateSubjectDropdown() {
   const subjectSelect = document.getElementById('subject');
   if (!subjectSelect) return;
@@ -51,11 +135,11 @@ function buildTaskStatusMap(plannerItems, evidenceItems) {
   const plannedMap = {};
   const evidenceMap = {};
 
-  plannerItems.forEach(item => {
+  plannerItems.forEach((item) => {
     plannedMap[item.taskId] = true;
   });
 
-  evidenceItems.forEach(item => {
+  evidenceItems.forEach((item) => {
     evidenceMap[item.taskId] = true;
   });
 
@@ -98,7 +182,6 @@ function taskCard(task, statusMap) {
 
       <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate)}</p>
       <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes)} mins</p>
-
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
 
       <div class="actions">
@@ -111,6 +194,84 @@ function taskCard(task, statusMap) {
       </div>
     </article>
   `;
+}
+
+function teacherHomeworkCard(item) {
+  return `
+    <article class="task-card">
+      <div class="task-top">
+        <div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p class="muted">${escapeHtml(item.className)} · ${escapeHtml(item.subject)}</p>
+        </div>
+        <div class="task-badges">
+          <span class="badge">Due ${escapeHtml(item.dueDate)}</span>
+        </div>
+      </div>
+
+      <p>${escapeHtml(item.description)}</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(item.estimatedMinutes)} mins</p>
+
+      <div class="actions">
+        <button
+          class="button small primary"
+          data-action="import-teacher-homework"
+          data-id="${item.id}"
+          data-class-name="${escapeHtml(item.className)}"
+          data-subject="${escapeHtml(item.subject)}"
+          data-title="${escapeHtml(item.title)}"
+          data-description="${escapeHtml(item.description)}"
+          data-due-date="${escapeHtml(item.dueDate)}"
+          data-estimated-minutes="${escapeHtml(item.estimatedMinutes)}"
+        >
+          Add to my planner
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function renderConsistency(evidenceItems) {
+  const currentStreakEl = document.getElementById('currentStreak');
+  const bestStreakEl = document.getElementById('bestStreak');
+  const sessionsTodayEl = document.getElementById('sessionsToday');
+  const evidenceThisWeekEl = document.getElementById('evidenceThisWeek');
+
+  if (!currentStreakEl || !bestStreakEl || !sessionsTodayEl || !evidenceThisWeekEl) return;
+
+  const studyEvidence = evidenceItems.filter((item) => item.type === 'study-session');
+  const evidenceDates = studyEvidence.map((item) => dateOnly(item.createdAt));
+
+  const sortedDatesDesc = [...evidenceDates].sort((a, b) => b.localeCompare(a));
+  const sortedDatesAsc = [...evidenceDates].sort((a, b) => a.localeCompare(b));
+
+  const currentStreak = calculateCurrentStreak(sortedDatesDesc);
+  const bestStreak = evidenceDates.length ? calculateBestStreak(sortedDatesAsc) : 0;
+  const todayCount = studyEvidence.filter((item) => dateOnly(item.createdAt) === todayISO()).length;
+
+  const last7Dates = new Set(getLast7Dates());
+  const thisWeekCount = evidenceItems.filter((item) => last7Dates.has(dateOnly(item.createdAt))).length;
+
+  currentStreakEl.textContent = formatStreakLabel(currentStreak);
+  bestStreakEl.textContent = formatStreakLabel(bestStreak);
+  sessionsTodayEl.textContent = String(todayCount);
+  evidenceThisWeekEl.textContent = String(thisWeekCount);
+}
+
+async function renderTeacherHomework() {
+  const container = document.getElementById('teacherHomeworkList');
+  if (!container) return;
+
+  try {
+    const response = await fetch('/api/teacher-homework');
+    const items = await response.json();
+
+    container.innerHTML = items.length
+      ? items.map(teacherHomeworkCard).join('')
+      : '<p>No teacher-posted homework yet.</p>';
+  } catch (error) {
+    container.innerHTML = '<p>Unable to load teacher-posted homework.</p>';
+  }
 }
 
 async function renderDashboard() {
@@ -143,21 +304,24 @@ async function renderDashboard() {
 
   if (dueTodayList) {
     dueTodayList.innerHTML = dueTodayTasks.length
-      ? dueTodayTasks.map(task => taskCard(task, statusMap)).join('')
+      ? dueTodayTasks.map((task) => taskCard(task, statusMap)).join('')
       : '<p>No tasks due today.</p>';
   }
 
   if (overdueList) {
     overdueList.innerHTML = overdueTasks.length
-      ? overdueTasks.map(task => taskCard(task, statusMap)).join('')
+      ? overdueTasks.map((task) => taskCard(task, statusMap)).join('')
       : '<p>No overdue tasks.</p>';
   }
 
   if (allTasksList) {
     allTasksList.innerHTML = sortedTasks.length
-      ? sortedTasks.map(task => taskCard(task, statusMap)).join('')
+      ? sortedTasks.map((task) => taskCard(task, statusMap)).join('')
       : '<p>No homework added yet.</p>';
   }
+
+  renderConsistency(evidenceItems);
+  await renderTeacherHomework();
 }
 
 async function handleTaskFormSubmit(event) {
@@ -185,12 +349,45 @@ async function handleTaskFormSubmit(event) {
   await renderDashboard();
 }
 
+async function importTeacherHomework(button) {
+  const task = {
+    id: generateId(),
+    subject: button.dataset.subject,
+    title: button.dataset.title,
+    dueDate: button.dataset.dueDate,
+    estimatedMinutes: Number(button.dataset.estimatedMinutes) || 20,
+    notes: button.dataset.description,
+    status: 'todo',
+    source: 'teacher',
+    sourceId: button.dataset.id,
+    createdAt: new Date().toISOString()
+  };
+
+  const existingTasks = await getAllTasks();
+  const alreadyImported = existingTasks.some(
+    (item) => item.source === 'teacher' && item.sourceId === task.sourceId
+  );
+
+  if (alreadyImported) {
+    alert('This teacher-posted homework is already in your planner.');
+    return;
+  }
+
+  await addTask(task);
+  await renderDashboard();
+}
+
 async function handleTaskActions(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
 
   const action = button.dataset.action;
   const id = button.dataset.id;
+
+  if (action === 'import-teacher-homework') {
+    await importTeacherHomework(button);
+    return;
+  }
 
   const tasks = await getAllTasks();
   const task = tasks.find((item) => item.id === id);

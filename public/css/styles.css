@@ -441,3 +441,9 @@ textarea {
 .checkbox-field input[type="checkbox"] {
   width: auto;
 }
+.consistency-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.teacher-panel {
+  margin-top: 1rem;
+}

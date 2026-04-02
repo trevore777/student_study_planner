@@ -1,0 +1,45 @@
+<section class="page-header">
+  <div>
+    <h1>Post Homework</h1>
+    <p class="lede">Publish homework for a class and subject.</p>
+  </div>
+</section>
+
+<section class="card">
+  <form method="POST" action="/teacher/homework/new" class="stack-form">
+    <div class="field">
+      <label for="className">Class</label>
+      <input id="className" name="className" type="text" placeholder="e.g. Year 8B" required />
+    </div>
+
+    <div class="field">
+      <label for="subject">Subject</label>
+      <input id="subject" name="subject" type="text" placeholder="e.g. English" required />
+    </div>
+
+    <div class="field">
+      <label for="title">Homework title</label>
+      <input id="title" name="title" type="text" placeholder="e.g. Complete persuasive paragraph" required />
+    </div>
+
+    <div class="field">
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="5" placeholder="Instructions, page numbers, checklist..." required></textarea>
+    </div>
+
+    <div class="field">
+      <label for="dueDate">Due date</label>
+      <input id="dueDate" name="dueDate" type="date" required />
+    </div>
+
+    <div class="field">
+      <label for="estimatedMinutes">Estimated minutes</label>
+      <input id="estimatedMinutes" name="estimatedMinutes" type="number" min="5" step="5" value="20" />
+    </div>
+
+    <div class="actions">
+      <button class="button primary" type="submit">Publish homework</button>
+      <a class="button" href="/teacher/dashboard">Cancel</a>
+    </div>
+  </form>
+</section>
