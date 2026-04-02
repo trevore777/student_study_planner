@@ -5,57 +5,89 @@
   </div>
 </section>
 
-<section class="card">
-  <h2>Plan your week</h2>
-  <p class="muted">
-    Use this page to spread your homework across the week. Start with what is overdue,
-    then what is due soon, then add revision.
-  </p>
+<section class="grid dashboard-grid">
+  <article class="card">
+    <h2>Add study block</h2>
+
+    <form id="plannerForm" class="stack-form">
+      <div class="field">
+        <label for="plannedTaskId">Task</label>
+        <select id="plannedTaskId" name="plannedTaskId" required>
+          <option value="">Select a task</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="plannedDay">Day</label>
+        <select id="plannedDay" name="plannedDay" required>
+          <option value="">Select day</option>
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+          <option value="Saturday">Saturday</option>
+          <option value="Sunday">Sunday</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="plannedTime">Time block</label>
+        <select id="plannedTime" name="plannedTime" required>
+          <option value="">Select time block</option>
+          <option value="After school">After school</option>
+          <option value="Homework block">Homework block</option>
+          <option value="Revision block">Revision block</option>
+          <option value="Evening catch-up">Evening catch-up</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="plannerNotes">Notes</label>
+        <textarea
+          id="plannerNotes"
+          name="plannerNotes"
+          rows="4"
+          placeholder="e.g. Finish paragraph, revise key terms, check worksheet"
+        ></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="button primary" type="submit">Save study block</button>
+      </div>
+    </form>
+  </article>
+
+  <article class="card">
+    <h2>Planning reminders</h2>
+    <ul class="tight-list">
+      <li>Plan overdue tasks first</li>
+      <li>Put harder work earlier in the week</li>
+      <li>Leave shorter review blocks before assessments</li>
+      <li>Do not overload one night</li>
+    </ul>
+  </article>
 </section>
 
-<section class="planner-grid">
+<section class="card">
+  <div class="section-heading">
+    <h2>Open homework tasks</h2>
+  </div>
+  <div id="plannerTaskList" class="task-list empty-state">
+    <p>No open tasks to plan yet.</p>
+  </div>
+</section>
+
+<section class="planner-grid" id="plannerWeekGrid">
   <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
     <section class="card planner-day">
       <h3><%= day %></h3>
-
-      <div class="planner-block">
-        <strong>After school</strong>
-        <p class="muted">Quick check of homework and teacher posts</p>
+      <div class="planner-day-list task-list" data-day="<%= day %>">
+        <p>No study blocks planned.</p>
       </div>
-
-      <div class="planner-block">
-        <strong>Homework block</strong>
-        <p class="muted">Complete one priority task</p>
-      </div>
-
-      <div class="planner-block">
-        <strong>Revision block</strong>
-        <p class="muted">10–20 minutes of review or self-testing</p>
-      </div>
-
-      <button class="button small">Add study block</button>
     </section>
   <% }) %>
 </section>
 
-<section class="grid">
-  <article class="card">
-    <h2>Good planning habits</h2>
-    <ul class="tight-list">
-      <li>Start with overdue or due soon tasks</li>
-      <li>Break big homework into smaller sessions</li>
-      <li>Leave space for sport, family, and rest</li>
-      <li>Do a short review before assessments</li>
-    </ul>
-  </article>
-
-  <article class="card">
-    <h2>Suggested routine</h2>
-    <ul class="tight-list">
-      <li>5 mins: check tasks</li>
-      <li>20–30 mins: complete one task</li>
-      <li>10 mins: review notes or quiz yourself</li>
-      <li>2 mins: record what you finished</li>
-    </ul>
-  </article>
-</section>
+<script src="/client/db.js"></script>
+<script src="/client/planner.js"></script>

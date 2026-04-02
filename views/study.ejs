@@ -1,0 +1,37 @@
+<section class="page-header">
+  <h1>Study Session</h1>
+  <p class="lede">Focus on one task. Work steadily. Record what you complete.</p>
+</section>
+
+<section class="card">
+  <h2 id="studyTaskTitle">Loading task...</h2>
+  <p id="studyTaskSubject" class="muted"></p>
+
+  <div class="timer">
+    <h1 id="timerDisplay">20:00</h1>
+  </div>
+
+  <div class="actions">
+    <button id="startTimer" class="button primary">Start</button>
+    <button id="pauseTimer" class="button">Pause</button>
+    <button id="resetTimer" class="button">Reset</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Reflection</h2>
+
+  <form id="studyReflectionForm" class="stack-form">
+    <div class="field">
+      <label>What did you complete?</label>
+      <textarea id="studyReflection" rows="4" required></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="button primary" type="submit">Finish & Save Evidence</button>
+    </div>
+  </form>
+</section>
+
+<script src="/client/db.js"></script>
+<script src="/client/study.js"></script>

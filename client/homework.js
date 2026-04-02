@@ -47,7 +47,24 @@ async function populateSubjectDropdown() {
   });
 }
 
-function taskCard(task) {
+function buildTaskStatusMap(plannerItems, evidenceItems) {
+  const plannedMap = {};
+  const evidenceMap = {};
+
+  plannerItems.forEach(item => {
+    plannedMap[item.taskId] = true;
+  });
+
+  evidenceItems.forEach(item => {
+    evidenceMap[item.taskId] = true;
+  });
+
+  return { plannedMap, evidenceMap };
+}
+
+function taskCard(task, statusMap) {
+  const { plannedMap, evidenceMap } = statusMap;
+
   const overdueBadge = isOverdue(task)
     ? '<span class="badge badge-danger">Overdue</span>'
     : '';
@@ -55,6 +72,14 @@ function taskCard(task) {
   const doneBadge = task.status === 'done'
     ? '<span class="badge badge-success">Done</span>'
     : '<span class="badge">To do</span>';
+
+  const plannedBadge = plannedMap[task.id]
+    ? '<span class="badge">Planned</span>'
+    : '';
+
+  const evidenceBadge = evidenceMap[task.id]
+    ? '<span class="badge badge-success">Evidence</span>'
+    : '';
 
   return `
     <article class="task-card">
@@ -66,6 +91,8 @@ function taskCard(task) {
         <div class="task-badges">
           ${overdueBadge}
           ${doneBadge}
+          ${plannedBadge}
+          ${evidenceBadge}
         </div>
       </div>
 
@@ -87,7 +114,14 @@ function taskCard(task) {
 }
 
 async function renderDashboard() {
-  const tasks = sortTasks(await getAllTasks());
+  const [tasks, plannerItems, evidenceItems] = await Promise.all([
+    getAllTasks(),
+    getAllPlannerItems(),
+    getAllEvidence()
+  ]);
+
+  const sortedTasks = sortTasks(tasks);
+  const statusMap = buildTaskStatusMap(plannerItems, evidenceItems);
 
   const totalTasks = document.getElementById('totalTasks');
   const dueTodayCount = document.getElementById('dueTodayCount');
@@ -98,30 +132,30 @@ async function renderDashboard() {
   const overdueList = document.getElementById('overdueList');
   const allTasksList = document.getElementById('allTasksList');
 
-  const dueTodayTasks = tasks.filter(isDueToday);
-  const overdueTasks = tasks.filter(isOverdue);
-  const doneTasks = tasks.filter((task) => task.status === 'done');
+  const dueTodayTasks = sortedTasks.filter(isDueToday);
+  const overdueTasks = sortedTasks.filter(isOverdue);
+  const doneTasks = sortedTasks.filter((task) => task.status === 'done');
 
-  if (totalTasks) totalTasks.textContent = tasks.length;
+  if (totalTasks) totalTasks.textContent = sortedTasks.length;
   if (dueTodayCount) dueTodayCount.textContent = dueTodayTasks.length;
   if (overdueCount) overdueCount.textContent = overdueTasks.length;
   if (doneCount) doneCount.textContent = doneTasks.length;
 
   if (dueTodayList) {
     dueTodayList.innerHTML = dueTodayTasks.length
-      ? dueTodayTasks.map(taskCard).join('')
+      ? dueTodayTasks.map(task => taskCard(task, statusMap)).join('')
       : '<p>No tasks due today.</p>';
   }
 
   if (overdueList) {
     overdueList.innerHTML = overdueTasks.length
-      ? overdueTasks.map(taskCard).join('')
+      ? overdueTasks.map(task => taskCard(task, statusMap)).join('')
       : '<p>No overdue tasks.</p>';
   }
 
   if (allTasksList) {
-    allTasksList.innerHTML = tasks.length
-      ? tasks.map(taskCard).join('')
+    allTasksList.innerHTML = sortedTasks.length
+      ? sortedTasks.map(task => taskCard(task, statusMap)).join('')
       : '<p>No homework added yet.</p>';
   }
 }
@@ -146,6 +180,7 @@ async function handleTaskFormSubmit(event) {
   await addTask(task);
   form.reset();
   document.getElementById('estimatedMinutes').value = 20;
+
   await populateSubjectDropdown();
   await renderDashboard();
 }
@@ -156,6 +191,7 @@ async function handleTaskActions(event) {
 
   const action = button.dataset.action;
   const id = button.dataset.id;
+
   const tasks = await getAllTasks();
   const task = tasks.find((item) => item.id === id);
 

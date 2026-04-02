@@ -1,9 +1,10 @@
 const DB_NAME = 'studytrack_db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const TASK_STORE = 'tasks';
 const SUBJECT_STORE = 'subjects';
 const EVIDENCE_STORE = 'evidence';
+const PLANNER_STORE = 'planner_items';
 
 const DEFAULT_SUBJECTS = [
   'English',
@@ -45,6 +46,14 @@ function openStudyTrackDB() {
         evidenceStore.createIndex('taskId', 'taskId', { unique: false });
         evidenceStore.createIndex('createdAt', 'createdAt', { unique: false });
         evidenceStore.createIndex('type', 'type', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(PLANNER_STORE)) {
+        const plannerStore = db.createObjectStore(PLANNER_STORE, { keyPath: 'id' });
+        plannerStore.createIndex('taskId', 'taskId', { unique: false });
+        plannerStore.createIndex('day', 'day', { unique: false });
+        plannerStore.createIndex('timeBlock', 'timeBlock', { unique: false });
+        plannerStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
 
       const subjectCountRequest = subjectStore.count();
@@ -219,6 +228,51 @@ async function deleteEvidence(id) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(EVIDENCE_STORE, 'readwrite');
     const store = tx.objectStore(EVIDENCE_STORE);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getAllPlannerItems() {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PLANNER_STORE, 'readonly');
+    const store = tx.objectStore(PLANNER_STORE);
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const items = (request.result || []).sort((a, b) =>
+        String(a.day).localeCompare(String(b.day)) ||
+        String(a.timeBlock).localeCompare(String(b.timeBlock))
+      );
+      resolve(items);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function addPlannerItem(item) {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PLANNER_STORE, 'readwrite');
+    const store = tx.objectStore(PLANNER_STORE);
+    const request = store.add(item);
+
+    request.onsuccess = () => resolve(item);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function deletePlannerItem(id) {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PLANNER_STORE, 'readwrite');
+    const store = tx.objectStore(PLANNER_STORE);
     const request = store.delete(id);
 
     request.onsuccess = () => resolve();
