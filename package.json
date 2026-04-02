@@ -1,0 +1,36 @@
+{
+  "name": "studytrack",
+  "version": "0.1.0",
+  "description": "Local-first study planner for Years 7-12 students",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.22.1",
+    "express-ejs-layouts": "^2.5.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^11.0.5"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trevore777/student_study_planner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/trevore777/student_study_planner/issues"
+  },
+  "homepage": "https://github.com/trevore777/student_study_planner#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
