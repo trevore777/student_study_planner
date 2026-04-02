@@ -31,6 +31,22 @@ function isDueToday(task) {
   return task.status !== 'done' && task.dueDate === todayISO();
 }
 
+async function populateSubjectDropdown() {
+  const subjectSelect = document.getElementById('subject');
+  if (!subjectSelect) return;
+
+  const subjects = await getAllSubjects();
+
+  subjectSelect.innerHTML = '<option value="">Select subject</option>';
+
+  subjects.forEach((subject) => {
+    const option = document.createElement('option');
+    option.value = subject.name;
+    option.textContent = subject.name;
+    subjectSelect.appendChild(option);
+  });
+}
+
 function taskCard(task) {
   const overdueBadge = isOverdue(task)
     ? '<span class="badge badge-danger">Overdue</span>'
@@ -86,22 +102,28 @@ async function renderDashboard() {
   const overdueTasks = tasks.filter(isOverdue);
   const doneTasks = tasks.filter((task) => task.status === 'done');
 
-  totalTasks.textContent = tasks.length;
-  dueTodayCount.textContent = dueTodayTasks.length;
-  overdueCount.textContent = overdueTasks.length;
-  doneCount.textContent = doneTasks.length;
+  if (totalTasks) totalTasks.textContent = tasks.length;
+  if (dueTodayCount) dueTodayCount.textContent = dueTodayTasks.length;
+  if (overdueCount) overdueCount.textContent = overdueTasks.length;
+  if (doneCount) doneCount.textContent = doneTasks.length;
 
-  dueTodayList.innerHTML = dueTodayTasks.length
-    ? dueTodayTasks.map(taskCard).join('')
-    : '<p>No tasks due today.</p>';
+  if (dueTodayList) {
+    dueTodayList.innerHTML = dueTodayTasks.length
+      ? dueTodayTasks.map(taskCard).join('')
+      : '<p>No tasks due today.</p>';
+  }
 
-  overdueList.innerHTML = overdueTasks.length
-    ? overdueTasks.map(taskCard).join('')
-    : '<p>No overdue tasks.</p>';
+  if (overdueList) {
+    overdueList.innerHTML = overdueTasks.length
+      ? overdueTasks.map(taskCard).join('')
+      : '<p>No overdue tasks.</p>';
+  }
 
-  allTasksList.innerHTML = tasks.length
-    ? tasks.map(taskCard).join('')
-    : '<p>No homework added yet.</p>';
+  if (allTasksList) {
+    allTasksList.innerHTML = tasks.length
+      ? tasks.map(taskCard).join('')
+      : '<p>No homework added yet.</p>';
+  }
 }
 
 async function handleTaskFormSubmit(event) {
@@ -124,6 +146,7 @@ async function handleTaskFormSubmit(event) {
   await addTask(task);
   form.reset();
   document.getElementById('estimatedMinutes').value = 20;
+  await populateSubjectDropdown();
   await renderDashboard();
 }
 
@@ -157,13 +180,13 @@ async function handleTaskActions(event) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const taskForm = document.getElementById('taskForm');
-  const pageBody = document.body;
 
   if (taskForm) {
     taskForm.addEventListener('submit', handleTaskFormSubmit);
   }
 
-  pageBody.addEventListener('click', handleTaskActions);
+  document.body.addEventListener('click', handleTaskActions);
 
+  await populateSubjectDropdown();
   await renderDashboard();
 });

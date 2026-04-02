@@ -5,44 +5,65 @@
   </div>
 </section>
 
-<section class="card">
-  <h2>Show what you have done</h2>
-  <p>
-    Students can attach a screenshot, short note, photo of workbook pages, or a file export
-    to show progress on homework and study.
-  </p>
-
-  <ul class="tight-list">
-    <li>Screenshot of completed online work</li>
-    <li>Photo of written homework</li>
-    <li>Short reflection note</li>
-    <li>Linked task completion</li>
-  </ul>
-</section>
-
-<section class="grid">
+<section class="grid dashboard-grid">
   <article class="card">
-    <h3>Why evidence matters</h3>
-    <p>
-      Evidence helps students track progress, reflect on consistency, and show what they have done
-      over time instead of relying on memory.
-    </p>
+    <h2>Add evidence</h2>
+
+    <form id="evidenceForm" class="stack-form">
+      <div class="field">
+        <label for="taskId">Linked task</label>
+        <select id="taskId" name="taskId" required>
+          <option value="">Select a task</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="evidenceType">Evidence type</label>
+        <select id="evidenceType" name="evidenceType" required>
+          <option value="">Select type</option>
+          <option value="reflection">Reflection note</option>
+          <option value="screenshot">Screenshot record</option>
+          <option value="photo">Photo record</option>
+          <option value="completion">Completion note</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="evidenceText">What did you complete?</label>
+        <textarea
+          id="evidenceText"
+          name="evidenceText"
+          rows="5"
+          placeholder="e.g. Finished questions 1–8, corrected mistakes, and reviewed the key terms."
+          required
+        ></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="button primary" type="submit">Save evidence</button>
+      </div>
+    </form>
   </article>
 
   <article class="card">
-    <h3>Useful evidence examples</h3>
+    <h2>Why evidence matters</h2>
     <ul class="tight-list">
-      <li>Photo of maths workbook page</li>
-      <li>Screenshot of typed English paragraph</li>
-      <li>Short note on what was completed</li>
-      <li>Reflection on what needs finishing next</li>
+      <li>Shows what was actually completed</li>
+      <li>Builds student accountability</li>
+      <li>Helps students reflect on progress</li>
+      <li>Can later support teacher or parent summaries</li>
     </ul>
   </article>
-
-  <article class="card">
-    <h3>Next build step</h3>
-    <p>
-      This page can later link evidence directly to a task so students can prove completion against each homework item.
-    </p>
-  </article>
 </section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Saved evidence</h2>
+  </div>
+  <div id="evidenceList" class="task-list empty-state">
+    <p>No evidence added yet.</p>
+  </div>
+</section>
+
+<script src="/client/db.js"></script>
+<script src="/client/evidence.js"></script>

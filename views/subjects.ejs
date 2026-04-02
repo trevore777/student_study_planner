@@ -1,51 +1,51 @@
 <section class="page-header">
   <div>
     <h1>Subjects</h1>
-    <p class="lede">Track homework, revision, and resources by subject.</p>
+    <p class="lede">Create and manage the subjects used in your planner.</p>
   </div>
 </section>
 
-<section class="card">
-  <h2>Your subjects</h2>
-  <p class="muted">
-    Each subject can hold homework, teacher posts, revision prompts, and study evidence.
-  </p>
-</section>
+<section class="grid dashboard-grid">
+  <article class="card">
+    <h2>Add subject</h2>
 
-<section class="grid">
-  <% ['English','Maths','Science','Humanities','Digital Technologies','Health'].forEach(subject => { %>
-    <article class="card">
-      <h3><%= subject %></h3>
-      <p>Upcoming tasks, teacher posts, and revision checklists live here.</p>
-
-      <div class="subject-meta">
-        <span class="badge">Homework</span>
-        <span class="badge">Revision</span>
-        <span class="badge">Resources</span>
+    <form id="subjectForm" class="stack-form">
+      <div class="field">
+        <label for="subjectName">Subject name</label>
+        <input
+          id="subjectName"
+          name="subjectName"
+          type="text"
+          placeholder="e.g. English"
+          required
+        />
       </div>
 
       <div class="actions">
-        <a class="button small primary" href="/dashboard">View tasks</a>
+        <button class="button primary" type="submit">Save subject</button>
       </div>
-    </article>
-  <% }) %>
-</section>
+    </form>
+  </article>
 
-<section class="grid">
   <article class="card">
-    <h2>How to use subjects well</h2>
+    <h2>How subjects help</h2>
     <ul class="tight-list">
-      <li>Record each task under the correct subject</li>
-      <li>Keep subject names consistent</li>
-      <li>Use the planner to balance subjects across the week</li>
-      <li>Store revision notes and evidence under the right area</li>
+      <li>Keep homework organised correctly</li>
+      <li>Make the dashboard easier to scan</li>
+      <li>Help build a balanced weekly planner</li>
+      <li>Prepare for teacher-posted tasks later</li>
     </ul>
   </article>
-
-  <article class="card">
-    <h2>Next improvement</h2>
-    <p>
-      Later, this page can become dynamic so students can add, rename, and manage their own subject list.
-    </p>
-  </article>
 </section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Your subjects</h2>
+  </div>
+  <div id="subjectsList" class="task-list empty-state">
+    <p>No subjects yet.</p>
+  </div>
+</section>
+
+<script src="/client/db.js"></script>
+<script src="/client/subjects.js"></script>
