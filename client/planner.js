@@ -22,25 +22,41 @@ function escapeHtml(value) {
 }
 
 function taskSort(a, b) {
-  if (a.status === 'done' && b.status !== 'done') return 1;
-  if (a.status !== 'done' && b.status === 'done') return -1;
-  return String(a.dueDate).localeCompare(String(b.dueDate));
+  const aDue = a?.dueDate || '9999-12-31';
+  const bDue = b?.dueDate || '9999-12-31';
+
+  if (a?.status === 'done' && b?.status !== 'done') return 1;
+  if (a?.status !== 'done' && b?.status === 'done') return -1;
+
+  return String(aDue).localeCompare(String(bDue));
 }
 
 async function populatePlannerTaskDropdown() {
   const select = document.getElementById('plannedTaskId');
   if (!select) return;
 
-  const tasks = (await getAllTasks())
-    .filter((task) => task.status !== 'done')
+  const allTasks = await getAllTasks();
+  console.log('Planner loaded tasks:', allTasks);
+
+  const tasks = allTasks
+    .filter((task) => task && task.title && task.subject && task.status !== 'done')
     .sort(taskSort);
 
   select.innerHTML = '<option value="">Select a task</option>';
 
+  if (!tasks.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No open tasks available';
+    option.disabled = true;
+    select.appendChild(option);
+    return;
+  }
+
   tasks.forEach((task) => {
     const option = document.createElement('option');
     option.value = task.id;
-    option.textContent = `${task.subject} — ${task.title} (Due ${task.dueDate})`;
+    option.textContent = `${task.subject} — ${task.title} (Due ${task.dueDate || 'No due date'})`;
     select.appendChild(option);
   });
 }
@@ -54,11 +70,11 @@ function taskCard(task) {
           <p class="muted">${escapeHtml(task.subject)}</p>
         </div>
         <div class="task-badges">
-          <span class="badge">Due ${escapeHtml(task.dueDate)}</span>
+          <span class="badge">Due ${escapeHtml(task.dueDate || 'No due date')}</span>
         </div>
       </div>
 
-      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes)} mins</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
     </article>
   `;
@@ -69,12 +85,12 @@ async function renderPlannerTaskList() {
   if (!taskList) return;
 
   const tasks = (await getAllTasks())
-    .filter((task) => task.status !== 'done')
+    .filter((task) => task && task.title && task.subject && task.status !== 'done')
     .sort(taskSort);
 
   taskList.innerHTML = tasks.length
     ? tasks.map(taskCard).join('')
-    : '<p>No open tasks to plan yet.</p>';
+    : '<p>No open tasks to plan yet. Add homework on the dashboard first.</p>';
 }
 
 function buildTaskMap(tasks) {
@@ -148,6 +164,7 @@ async function handlePlannerFormSubmit(event) {
 
   await addPlannerItem(item);
   form.reset();
+
   await populatePlannerTaskDropdown();
   await renderPlannerTaskList();
   await renderPlannerWeek();
@@ -157,10 +174,16 @@ async function handlePlannerActions(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
 
-  if (button.dataset.action !== 'delete-planner-item') return;
+  if (button.dataset.action === 'delete-planner-item') {
+    await deletePlannerItem(button.dataset.id);
+    await renderPlannerWeek();
+    return;
+  }
 
-  await deletePlannerItem(button.dataset.id);
-  await renderPlannerWeek();
+  if (button.dataset.action === 'start-study') {
+    const taskId = button.dataset.taskId;
+    window.location.href = `/study?taskId=${taskId}`;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -171,11 +194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.body.addEventListener('click', handlePlannerActions);
-
-  if (button.dataset.action === 'start-study') {
-  const taskId = button.dataset.taskId;
-  window.location.href = `/study?taskId=${taskId}`;
-}
 
   await populatePlannerTaskDropdown();
   await renderPlannerTaskList();
