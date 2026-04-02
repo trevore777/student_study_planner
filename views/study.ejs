@@ -1,34 +1,64 @@
 <section class="page-header">
-  <h1>Study Session</h1>
-  <p class="lede">Focus on one task. Work steadily. Record what you complete.</p>
-</section>
-
-<section class="card">
-  <h2 id="studyTaskTitle">Loading task...</h2>
-  <p id="studyTaskSubject" class="muted"></p>
-
-  <div class="timer">
-    <h1 id="timerDisplay">20:00</h1>
-  </div>
-
-  <div class="actions">
-    <button id="startTimer" class="button primary">Start</button>
-    <button id="pauseTimer" class="button">Pause</button>
-    <button id="resetTimer" class="button">Reset</button>
+  <div>
+    <h1>Study Session</h1>
+    <p class="lede">Focus on one task. Work steadily. Record what you complete.</p>
   </div>
 </section>
 
-<section class="card">
-  <h2>Reflection</h2>
+<section class="grid dashboard-grid">
+  <article class="card">
+    <h2 id="studyTaskTitle">Loading task...</h2>
+    <p id="studyTaskSubject" class="muted"></p>
+    <p id="studyTaskDue" class="muted"></p>
 
-  <form id="studyReflectionForm" class="stack-form">
-    <div class="field">
-      <label>What did you complete?</label>
-      <textarea id="studyReflection" rows="4" required></textarea>
+    <div class="timer-card">
+      <div id="timerDisplay" class="timer-display">20:00</div>
+      <p class="muted">Default focus block: 20 minutes</p>
     </div>
 
     <div class="actions">
-      <button class="button primary" type="submit">Finish & Save Evidence</button>
+      <button id="startTimer" class="button primary" type="button">Start</button>
+      <button id="pauseTimer" class="button" type="button">Pause</button>
+      <button id="resetTimer" class="button" type="button">Reset</button>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>Session checklist</h2>
+    <ul class="tight-list">
+      <li>Read the task carefully</li>
+      <li>Work without switching tabs or apps</li>
+      <li>Finish one clear chunk of work</li>
+      <li>Write a short reflection at the end</li>
+    </ul>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Finish session</h2>
+
+  <form id="studyReflectionForm" class="stack-form">
+    <div class="field">
+      <label for="studyReflection">What did you complete?</label>
+      <textarea
+        id="studyReflection"
+        name="studyReflection"
+        rows="5"
+        placeholder="e.g. Finished questions 1–10, corrected two mistakes, and reviewed key definitions."
+        required
+      ></textarea>
+    </div>
+
+    <div class="field checkbox-field">
+      <label>
+        <input type="checkbox" id="markTaskDone" name="markTaskDone" />
+        Mark this task as done
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="button primary" type="submit">Save evidence</button>
+      <a class="button" href="/dashboard">Back to dashboard</a>
     </div>
   </form>
 </section>

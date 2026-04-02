@@ -28,4 +28,5 @@ router.get('/settings', (req, res) => {
 router.get('/study', (req, res) => {
   res.render('study', { title: 'Study Session' });
 });
+
 module.exports = router;

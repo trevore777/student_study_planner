@@ -1,41 +1,27 @@
-let timer = 20 * 60;
-let interval = null;
+let timerSeconds = 20 * 60;
+let timerInterval = null;
 let currentTask = null;
 
-function formatTime(seconds) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function updateDisplay() {
-  document.getElementById('timerDisplay').textContent = formatTime(timer);
+function formatTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function startTimer() {
-  if (interval) return;
-
-  interval = setInterval(() => {
-    timer--;
-    updateDisplay();
-
-    if (timer <= 0) {
-      clearInterval(interval);
-      interval = null;
-      alert('Time complete. Add your reflection.');
-    }
-  }, 1000);
-}
-
-function pauseTimer() {
-  clearInterval(interval);
-  interval = null;
-}
-
-function resetTimer() {
-  pauseTimer();
-  timer = 20 * 60;
-  updateDisplay();
+function updateTimerDisplay() {
+  const timerDisplay = document.getElementById('timerDisplay');
+  if (timerDisplay) {
+    timerDisplay.textContent = formatTime(timerSeconds);
+  }
 }
 
 function getTaskIdFromURL() {
@@ -43,49 +29,100 @@ function getTaskIdFromURL() {
   return params.get('taskId');
 }
 
-async function loadTask() {
+async function loadCurrentTask() {
   const taskId = getTaskIdFromURL();
   if (!taskId) return;
 
   const tasks = await getAllTasks();
-  currentTask = tasks.find(t => t.id === taskId);
+  currentTask = tasks.find((task) => task.id === taskId);
 
-  if (!currentTask) return;
+  if (!currentTask) {
+    document.getElementById('studyTaskTitle').textContent = 'Task not found';
+    return;
+  }
 
   document.getElementById('studyTaskTitle').textContent = currentTask.title;
-  document.getElementById('studyTaskSubject').textContent = currentTask.subject;
+  document.getElementById('studyTaskSubject').textContent = currentTask.subject || '';
+  document.getElementById('studyTaskDue').textContent = currentTask.dueDate
+    ? `Due: ${currentTask.dueDate}`
+    : '';
+}
+
+function startTimer() {
+  if (timerInterval) return;
+
+  timerInterval = window.setInterval(() => {
+    timerSeconds -= 1;
+    updateTimerDisplay();
+
+    if (timerSeconds <= 0) {
+      pauseTimer();
+      timerSeconds = 0;
+      updateTimerDisplay();
+      alert('Study block complete. Add your reflection below.');
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  if (timerInterval) {
+    window.clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function resetTimer() {
+  pauseTimer();
+  timerSeconds = 20 * 60;
+  updateTimerDisplay();
 }
 
 async function handleReflectionSubmit(event) {
   event.preventDefault();
 
-  const text = document.getElementById('studyReflection').value;
+  if (!currentTask) {
+    alert('No task loaded for this study session.');
+    return;
+  }
 
-  if (!currentTask) return;
+  const reflection = document.getElementById('studyReflection').value.trim();
+  const markTaskDone = document.getElementById('markTaskDone').checked;
+
+  if (!reflection) {
+    alert('Please add a short reflection before saving.');
+    return;
+  }
 
   const evidence = {
-    id: `evidence-${Date.now()}`,
+    id: `evidence-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     taskId: currentTask.id,
     type: 'study-session',
-    text,
+    text: reflection,
     createdAt: new Date().toISOString()
   };
 
   await addEvidence(evidence);
 
-  alert('Great work. Evidence saved.');
+  if (markTaskDone) {
+    currentTask.status = 'done';
+    await updateTask(currentTask);
+  }
 
+  alert('Study session saved.');
   window.location.href = '/dashboard';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  updateDisplay();
-  await loadTask();
+  updateTimerDisplay();
+  await loadCurrentTask();
 
-  document.getElementById('startTimer').addEventListener('click', startTimer);
-  document.getElementById('pauseTimer').addEventListener('click', pauseTimer);
-  document.getElementById('resetTimer').addEventListener('click', resetTimer);
+  const startButton = document.getElementById('startTimer');
+  const pauseButton = document.getElementById('pauseTimer');
+  const resetButton = document.getElementById('resetTimer');
+  const reflectionForm = document.getElementById('studyReflectionForm');
 
-  document.getElementById('studyReflectionForm')
-    .addEventListener('submit', handleReflectionSubmit);
+  if (startButton) startButton.addEventListener('click', startTimer);
+  if (pauseButton) pauseButton.addEventListener('click', pauseTimer);
+  if (resetButton) resetButton.addEventListener('click', resetTimer);
+  if (reflectionForm) reflectionForm.addEventListener('submit', handleReflectionSubmit);
 });
