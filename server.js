@@ -8,7 +8,6 @@ const teacherRoutes = require('./routes/teacher');
 const apiRoutes = require('./routes/api');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -22,6 +21,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/client', express.static(path.join(__dirname, 'client')));
 app.use('/data', express.static(path.join(__dirname, 'data')));
 
+// Optional safety homepage if studentRoutes does not define "/"
+app.get('/health', (req, res) => {
+  res.status(200).send('StudyTrack OK');
+});
+
 app.use('/', studentRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/api', apiRoutes);
@@ -30,6 +34,12 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'Page not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`StudyTrack running on http://localhost:${PORT}`);
-});
+// Local development only
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`StudyTrack running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
