@@ -58,3 +58,4 @@ views/**/*.cache
 # Optional: lock files (keep if needed)
 # package-lock.json
 # yarn.lock
+.env.local
