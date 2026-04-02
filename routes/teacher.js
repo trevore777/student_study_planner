@@ -7,9 +7,21 @@ router.get('/login', (req, res) => {
 });
 
 router.get('/dashboard', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
   try {
     const result = await db.execute(`
-      SELECT *
+      SELECT
+        id,
+        class_name,
+        subject,
+        title,
+        description,
+        due_date,
+        estimated_minutes,
+        created_at
       FROM teacher_homework
       ORDER BY created_at DESC
     `);
@@ -25,21 +37,39 @@ router.get('/dashboard', async (req, res) => {
 });
 
 router.get('/homework/new', (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
   res.render('teacher-homework-new', { title: 'Post Homework' });
 });
 
 router.post('/homework/new', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
   try {
     const newItem = {
       id: `hw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      className: req.body.className,
-      subject: req.body.subject,
-      title: req.body.title,
-      description: req.body.description,
-      dueDate: req.body.dueDate,
+      className: (req.body.className || '').trim(),
+      subject: (req.body.subject || '').trim(),
+      title: (req.body.title || '').trim(),
+      description: (req.body.description || '').trim(),
+      dueDate: (req.body.dueDate || '').trim(),
       estimatedMinutes: Number(req.body.estimatedMinutes) || 20,
       createdAt: new Date().toISOString()
     };
+
+    if (
+      !newItem.className ||
+      !newItem.subject ||
+      !newItem.title ||
+      !newItem.description ||
+      !newItem.dueDate
+    ) {
+      return res.status(400).send('Missing required homework fields.');
+    }
 
     await db.execute({
       sql: `
@@ -68,15 +98,27 @@ router.post('/homework/new', async (req, res) => {
 
     res.redirect('/teacher/dashboard');
   } catch (error) {
-    console.error('Error creating homework:', error);
+    console.error('Error creating teacher homework:', error);
     res.status(500).send('Unable to save homework.');
   }
 });
 
 router.get('/summary', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
   try {
     const result = await db.execute(`
-      SELECT *
+      SELECT
+        id,
+        class_name,
+        subject,
+        title,
+        description,
+        due_date,
+        estimated_minutes,
+        created_at
       FROM teacher_homework
       ORDER BY class_name ASC, due_date ASC
     `);
@@ -86,7 +128,7 @@ router.get('/summary', async (req, res) => {
       homeworkItems: result.rows || []
     });
   } catch (error) {
-    console.error('Error loading summary:', error);
+    console.error('Error loading teacher summary:', error);
     res.status(500).send('Unable to load class summary.');
   }
 });
