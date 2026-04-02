@@ -1,39 +1,107 @@
-<section class="two-col">
+<section class="page-header">
   <div>
-    <h1>Today</h1>
-    <div class="card">
-      <h3>Next up</h3>
-      <div id="today-tasks"></div>
-      <button class="button primary" onclick="seedDemoData()">Load demo tasks</button>
-    </div>
-    <div class="card">
-      <h3>Quick add homework</h3>
-      <form id="task-form">
-        <input name="title" placeholder="Task title" required />
-        <select name="subject">
+    <h1>Dashboard</h1>
+    <p>Track homework, due dates, and progress across all subjects.</p>
+  </div>
+</section>
+
+<section class="grid dashboard-grid">
+  <article class="card">
+    <h2>Add homework</h2>
+
+    <form id="taskForm" class="stack-form">
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject" name="subject" required>
+          <option value="">Select subject</option>
           <option>English</option>
           <option>Maths</option>
           <option>Science</option>
-          <option>Humanities</option>
-          <option>Digital Tech</option>
+          <option>HASS</option>
+          <option>Digital Technologies</option>
+          <option>Health</option>
+          <option>PE</option>
+          <option>Other</option>
         </select>
-        <input type="date" name="dueDate" />
-        <input type="number" name="minutes" min="5" step="5" placeholder="Minutes" />
-        <button class="button primary" type="submit">Save task</button>
-      </form>
+      </div>
+
+      <div class="field">
+        <label for="title">Homework task</label>
+        <input id="title" name="title" type="text" placeholder="e.g. Finish worksheet questions 1–10" required />
+      </div>
+
+      <div class="field">
+        <label for="dueDate">Due date</label>
+        <input id="dueDate" name="dueDate" type="date" required />
+      </div>
+
+      <div class="field">
+        <label for="estimatedMinutes">Estimated minutes</label>
+        <input id="estimatedMinutes" name="estimatedMinutes" type="number" min="5" step="5" value="20" />
+      </div>
+
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Extra details, page numbers, teacher instructions..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="button primary" type="submit">Save homework</button>
+      </div>
+    </form>
+  </article>
+
+  <article class="card">
+    <h2>At a glance</h2>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">Total tasks</span>
+        <strong id="totalTasks">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Due today</span>
+        <strong id="dueTodayCount">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Overdue</span>
+        <strong id="overdueCount">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Done</span>
+        <strong id="doneCount">0</strong>
+      </div>
     </div>
+  </article>
+</section>
+
+<section class="grid dashboard-grid">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Due today</h2>
+    </div>
+    <div id="dueTodayList" class="task-list empty-state">
+      <p>No tasks due today.</p>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Overdue</h2>
+    </div>
+    <div id="overdueList" class="task-list empty-state">
+      <p>No overdue tasks.</p>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>All homework</h2>
   </div>
-  <div>
-    <div class="card">
-      <h3>Tonight's plan</h3>
-      <p>6:00–6:25 English summary notes</p>
-      <p>6:30–6:55 Maths worksheet corrections</p>
-      <p>7:00–7:20 Science review quiz</p>
-    </div>
-    <div class="card accent">
-      <h3>Reflection</h3>
-      <p>What did I finish today?</p>
-      <textarea placeholder="Write a short reflection"></textarea>
-    </div>
+  <div id="allTasksList" class="task-list empty-state">
+    <p>No homework added yet.</p>
   </div>
 </section>
+
+<script src="/client/db.js"></script>
+<script src="/client/homework.js"></script>

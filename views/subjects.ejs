@@ -1,9 +1,51 @@
-<h1>Subjects</h1>
-<div class="grid">
-  <% ['English','Maths','Science','Humanities','Digital Tech','Health'].forEach(subject => { %>
+<section class="page-header">
+  <div>
+    <h1>Subjects</h1>
+    <p class="lede">Track homework, revision, and resources by subject.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Your subjects</h2>
+  <p class="muted">
+    Each subject can hold homework, teacher posts, revision prompts, and study evidence.
+  </p>
+</section>
+
+<section class="grid">
+  <% ['English','Maths','Science','Humanities','Digital Technologies','Health'].forEach(subject => { %>
     <article class="card">
       <h3><%= subject %></h3>
       <p>Upcoming tasks, teacher posts, and revision checklists live here.</p>
+
+      <div class="subject-meta">
+        <span class="badge">Homework</span>
+        <span class="badge">Revision</span>
+        <span class="badge">Resources</span>
+      </div>
+
+      <div class="actions">
+        <a class="button small primary" href="/dashboard">View tasks</a>
+      </div>
     </article>
   <% }) %>
-</div>
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h2>How to use subjects well</h2>
+    <ul class="tight-list">
+      <li>Record each task under the correct subject</li>
+      <li>Keep subject names consistent</li>
+      <li>Use the planner to balance subjects across the week</li>
+      <li>Store revision notes and evidence under the right area</li>
+    </ul>
+  </article>
+
+  <article class="card">
+    <h2>Next improvement</h2>
+    <p>
+      Later, this page can become dynamic so students can add, rename, and manage their own subject list.
+    </p>
+  </article>
+</section>
