@@ -1,0 +1,9 @@
+{
+  "name": "StudyTrack",
+  "short_name": "StudyTrack",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#2b6cb0",
+  "icons": []
+}
