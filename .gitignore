@@ -26,8 +26,6 @@ build/
 # Coverage
 coverage/
 
-# Vercel / deployment
-.vercel/
 
 # SQLite databases (if you later add one)
 *.sqlite
@@ -35,12 +33,12 @@ coverage/
 *.db
 
 # Local student data exports
-/data/
+
 /exports/
 /uploads/
 
 # IndexedDB fallback exports (if you add backups)
-*.json
+
 
 # IDE / editor
 .vscode/

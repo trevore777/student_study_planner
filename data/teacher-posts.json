@@ -1,0 +1,23 @@
+[
+  {
+    "id": "p1",
+    "className": "7A",
+    "subject": "English",
+    "title": "Finish persuasive paragraph",
+    "dueDate": "2026-04-04"
+  },
+  {
+    "id": "p2",
+    "className": "8C",
+    "subject": "Science",
+    "title": "Revise states of matter key words",
+    "dueDate": "2026-04-05"
+  },
+  {
+    "id": "p3",
+    "className": "10B",
+    "subject": "Digital Tech",
+    "title": "Upload prototype screenshots",
+    "dueDate": "2026-04-08"
+  }
+]

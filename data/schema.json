@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "students": [
+      "id",
+      "first_name",
+      "last_name",
+      "year_level",
+      "class_code",
+      "created_at"
+    ],
+    "subjects": [
+      "id",
+      "student_id",
+      "name",
+      "teacher_name",
+      "colour",
+      "active"
+    ],
+    "tasks": [
+      "id",
+      "student_id",
+      "subject_id",
+      "source_type",
+      "title",
+      "description",
+      "due_date",
+      "estimated_minutes",
+      "priority",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "study_sessions": [
+      "id",
+      "student_id",
+      "task_id",
+      "planned_start",
+      "planned_end",
+      "actual_start",
+      "actual_end",
+      "completed",
+      "reflection"
+    ],
+    "evidence_items": [
+      "id",
+      "student_id",
+      "task_id",
+      "type",
+      "content_path_or_text",
+      "created_at"
+    ],
+    "teacher_posts": [
+      "id",
+      "teacher_id",
+      "class_id",
+      "subject_name",
+      "title",
+      "description",
+      "due_date",
+      "resource_url",
+      "created_at"
+    ]
+  }
+}
