@@ -1,0 +1,39 @@
+<section class="two-col">
+  <div>
+    <h1>Today</h1>
+    <div class="card">
+      <h3>Next up</h3>
+      <div id="today-tasks"></div>
+      <button class="button primary" onclick="seedDemoData()">Load demo tasks</button>
+    </div>
+    <div class="card">
+      <h3>Quick add homework</h3>
+      <form id="task-form">
+        <input name="title" placeholder="Task title" required />
+        <select name="subject">
+          <option>English</option>
+          <option>Maths</option>
+          <option>Science</option>
+          <option>Humanities</option>
+          <option>Digital Tech</option>
+        </select>
+        <input type="date" name="dueDate" />
+        <input type="number" name="minutes" min="5" step="5" placeholder="Minutes" />
+        <button class="button primary" type="submit">Save task</button>
+      </form>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <h3>Tonight's plan</h3>
+      <p>6:00–6:25 English summary notes</p>
+      <p>6:30–6:55 Maths worksheet corrections</p>
+      <p>7:00–7:20 Science review quiz</p>
+    </div>
+    <div class="card accent">
+      <h3>Reflection</h3>
+      <p>What did I finish today?</p>
+      <textarea placeholder="Write a short reflection"></textarea>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,14 @@
+<h1>Weekly Planner</h1>
+<p class="lede">A whole-week view is where students turn subject tasks into realistic time blocks.</p>
+<div class="planner-grid">
+  <% ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(day => { %>
+    <section class="card">
+      <h3><%= day %></h3>
+      <ul class="tight-list">
+        <li>After school review</li>
+        <li>Homework block</li>
+        <li>Assessment preparation</li>
+      </ul>
+    </section>
+  <% }) %>
+</div>

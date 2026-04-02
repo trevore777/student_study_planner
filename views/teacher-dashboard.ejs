@@ -1,0 +1,27 @@
+<h1>Teacher Dashboard</h1>
+<div class="card">
+  <h3>Recent published posts</h3>
+  <table class="simple-table">
+    <thead>
+      <tr><th>Class</th><th>Subject</th><th>Title</th><th>Due</th></tr>
+    </thead>
+    <tbody>
+      <% samplePosts.forEach(post => { %>
+      <tr>
+        <td><%= post.className %></td>
+        <td><%= post.subject %></td>
+        <td><%= post.title %></td>
+        <td><%= post.dueDate %></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Recommended teacher actions</h3>
+  <ul class="tight-list">
+    <li>Post homework once for the whole class</li>
+    <li>Add revision checklists before assessment blocks</li>
+    <li>Keep instructions concrete and short</li>
+  </ul>
+</div>
