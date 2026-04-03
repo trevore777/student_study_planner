@@ -11,6 +11,11 @@
     <p id="studyTaskSubject" class="muted"></p>
     <p id="studyTaskDue" class="muted"></p>
 
+    <div class="card" style="margin-top: 1rem;">
+      <h3>Homework instructions</h3>
+      <p id="studyTaskNotes" class="muted">No task instructions available.</p>
+    </div>
+
     <div class="timer-card">
       <div id="timerDisplay" class="timer-display">20:00</div>
       <p class="muted">Default focus block: 20 minutes</p>
@@ -32,6 +37,29 @@
       <li>Write a short reflection at the end</li>
     </ul>
   </article>
+</section>
+
+<section class="card">
+  <h2>AI Tutor</h2>
+  <p class="muted">Get help understanding the homework without the AI doing it for you.</p>
+
+  <form id="studyTutorForm" class="stack-form">
+    <div class="field">
+      <label for="studyTutorQuestion">Question</label>
+      <textarea
+        id="studyTutorQuestion"
+        rows="4"
+        placeholder="e.g. Explain what this homework is asking me to do."
+      ></textarea>
+    </div>
+
+    <div class="actions">
+      <button id="studyTutorButton" class="button primary" type="submit">Ask AI Tutor</button>
+    </div>
+  </form>
+
+  <div id="studyTutorStatus" class="muted" style="margin-top: 1rem;"></div>
+  <div id="studyTutorReply" class="card tutor-reply" style="display:none; margin-top: 1rem;"></div>
 </section>
 
 <section class="card">
