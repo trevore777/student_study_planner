@@ -1,7 +1,7 @@
 <section class="page-header">
   <div>
     <h1>Teacher Dashboard</h1>
-    <p class="lede">Manage posted homework for classes and subjects.</p>
+    <p class="lede">Manage posted homework with school-ready structure.</p>
   </div>
 </section>
 
@@ -26,15 +26,20 @@
           <div class="task-top">
             <div>
               <h3><%= item.title %></h3>
-              <p class="muted"><%= item.className %> · <%= item.subject %></p>
+              <p class="muted">
+                <%= item.school_name || item.school_id %> ·
+                <%= item.teacher_name || item.teacher_id %> ·
+                <%= item.class_name || item.class_id %> ·
+                <%= item.subject %>
+              </p>
             </div>
             <div class="task-badges">
-              <span class="badge">Due <%= item.dueDate %></span>
+              <span class="badge">Due <%= item.due_date %></span>
             </div>
           </div>
 
           <p><%= item.description %></p>
-          <p class="muted"><strong>Estimated:</strong> <%= item.estimatedMinutes %> mins</p>
+          <p class="muted"><strong>Estimated:</strong> <%= item.estimated_minutes %> mins</p>
         </article>
       <% }) %>
     </div>

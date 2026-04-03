@@ -1,15 +1,43 @@
 <section class="page-header">
   <div>
     <h1>Post Homework</h1>
-    <p class="lede">Publish homework for a class and subject.</p>
+    <p class="lede">Publish homework in a way that is ready for multiple schools later.</p>
   </div>
 </section>
 
 <section class="card">
   <form method="POST" action="/teacher/homework/new" class="stack-form">
     <div class="field">
-      <label for="className">Class</label>
-      <input id="className" name="className" type="text" placeholder="e.g. Year 8B" required />
+      <label for="schoolId">School</label>
+      <select id="schoolId" name="schoolId" required>
+        <% schools.forEach(school => { %>
+          <option value="<%= school.id %>" <%= school.id === defaults.schoolId ? 'selected' : '' %>>
+            <%= school.name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="teacherId">Teacher</label>
+      <select id="teacherId" name="teacherId" required>
+        <% teachers.forEach(teacher => { %>
+          <option value="<%= teacher.id %>" <%= teacher.id === defaults.teacherId ? 'selected' : '' %>>
+            <%= teacher.name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="classId">Class</label>
+      <select id="classId" name="classId" required>
+        <% classes.forEach(classItem => { %>
+          <option value="<%= classItem.id %>" <%= classItem.id === defaults.classId ? 'selected' : '' %>>
+            <%= classItem.name %><%= classItem.year_level ? ` (Year ${classItem.year_level})` : '' %>
+          </option>
+        <% }) %>
+      </select>
     </div>
 
     <div class="field">
