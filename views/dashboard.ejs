@@ -1,92 +1,160 @@
 <section class="page-header">
   <div>
-    <h1>Teacher Dashboard</h1>
-    <p class="lede">Manage homework and review Kings Credit challenge claims.</p>
+    <h1>Dashboard</h1>
+    <p>Track homework, due dates, progress, and study consistency.</p>
   </div>
 </section>
 
+<section class="card challenge-card">
+  <div class="section-heading">
+    <h2>21-Day Homework Challenge</h2>
+    <strong id="challengeCount">0 / 21 days</strong>
+  </div>
+
+  <div class="challenge-bar-wrap">
+    <div class="challenge-bar">
+      <div id="challengeBarFill" class="challenge-bar-fill" style="width: 0%;"></div>
+    </div>
+  </div>
+
+  <p id="challengeStatus" class="muted">Complete a study session today to begin your progress.</p>
+  <p id="challengeMessage" class="challenge-message">Small steps every day build strong habits.</p>
+
+  <div class="actions" style="margin-top: 1rem;">
+    <button id="claimKingsCreditButton" class="button primary" type="button" style="display:none;">
+      Claim Kings Credit
+    </button>
+  </div>
+
+  <div id="claimKingsCreditStatus" class="muted" style="margin-top: 0.75rem;"></div>
+</section>
+
+<section class="grid dashboard-grid">
+  <article class="card">
+    <h2>Add homework</h2>
+
+    <form id="taskForm" class="stack-form">
+      <input type="hidden" id="taskId" name="taskId" />
+
+      <div class="field">
+        <label for="subject">Subject</label>
+        <select id="subject" name="subject" required>
+          <option value="">Select subject</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="title">Homework task</label>
+        <input id="title" name="title" type="text" placeholder="e.g. Finish worksheet questions 1–10" required />
+      </div>
+
+      <div class="field">
+        <label for="dueDate">Due date</label>
+        <input id="dueDate" name="dueDate" type="date" required />
+      </div>
+
+      <div class="field">
+        <label for="estimatedMinutes">Estimated minutes</label>
+        <input id="estimatedMinutes" name="estimatedMinutes" type="number" min="5" step="5" value="20" />
+      </div>
+
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Extra details, page numbers, teacher instructions..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="button primary" type="submit" id="saveTaskButton">Save homework</button>
+        <button class="button" type="button" id="cancelEditButton" style="display:none;">Cancel edit</button>
+      </div>
+    </form>
+  </article>
+
+  <article class="card">
+    <h2>At a glance</h2>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">Total tasks</span>
+        <strong id="totalTasks">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Due today</span>
+        <strong id="dueTodayCount">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Overdue</span>
+        <strong id="overdueCount">0</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Done</span>
+        <strong id="doneCount">0</strong>
+      </div>
+    </div>
+  </article>
+</section>
+
 <section class="card">
-  <div class="actions">
-    <a class="button primary" href="/teacher/homework/new">Post new homework</a>
-    <a class="button" href="/teacher/summary">View class summary</a>
+  <div class="section-heading">
+    <h2>Consistency tracker</h2>
+  </div>
+
+  <div class="stats consistency-grid">
+    <div class="stat">
+      <span class="stat-label">Current streak</span>
+      <strong id="currentStreak">0 days</strong>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Best streak</span>
+      <strong id="bestStreak">0 days</strong>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Study sessions today</span>
+      <strong id="sessionsToday">0</strong>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Evidence this week</span>
+      <strong id="evidenceThisWeek">0</strong>
+    </div>
+  </div>
+</section>
+
+<section class="grid dashboard-grid">
+  <article class="card">
+    <div class="section-heading">
+      <h2>Due today</h2>
+    </div>
+    <div id="dueTodayList" class="task-list empty-state">
+      <p>No tasks due today.</p>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <h2>Overdue</h2>
+    </div>
+    <div id="overdueList" class="task-list empty-state">
+      <p>No overdue tasks.</p>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-heading">
+    <h2>Teacher posted homework</h2>
+  </div>
+  <div id="teacherHomeworkList" class="task-list empty-state">
+    <p>No teacher-posted homework yet.</p>
   </div>
 </section>
 
 <section class="card">
   <div class="section-heading">
-    <h2>Kings Credit claims</h2>
+    <h2>All homework</h2>
   </div>
-
-  <% if (!creditClaims || !creditClaims.length) { %>
-    <p>No Kings Credit claims yet.</p>
-  <% } else { %>
-    <div class="task-list">
-      <% creditClaims.forEach(item => { %>
-        <article class="task-card">
-          <div class="task-top">
-            <div>
-              <h3><%= item.student_name %></h3>
-              <p class="muted">
-                <%= item.year_level ? `Year ${item.year_level}` : 'Year level not set' %>
-              </p>
-            </div>
-            <div class="task-badges">
-              <span class="badge"><%= item.challenge_days %> / 21 days</span>
-              <span class="badge <%= item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : '' %>">
-                <%= item.status %>
-              </span>
-            </div>
-          </div>
-
-          <p class="muted"><strong>Claimed:</strong> <%= item.claimed_at %></p>
-
-          <% if (item.status === 'pending') { %>
-            <div class="actions">
-              <form method="POST" action="/teacher/claims/<%= item.id %>/approve" style="display:inline;">
-                <button class="button small primary" type="submit">Approve</button>
-              </form>
-
-              <form method="POST" action="/teacher/claims/<%= item.id %>/reject" style="display:inline;">
-                <button class="button small danger" type="submit">Reject</button>
-              </form>
-            </div>
-          <% } %>
-        </article>
-      <% }) %>
-    </div>
-  <% } %>
+  <div id="allTasksList" class="task-list empty-state">
+    <p>No homework added yet.</p>
+  </div>
 </section>
 
-<section class="card">
-  <div class="section-heading">
-    <h2>Published homework</h2>
-  </div>
-
-  <% if (!homeworkItems || !homeworkItems.length) { %>
-    <p>No homework posted yet.</p>
-  <% } else { %>
-    <div class="task-list">
-      <% homeworkItems.forEach(item => { %>
-        <article class="task-card">
-          <div class="task-top">
-            <div>
-              <h3><%= item.title %></h3>
-              <p class="muted">
-                <%= item.school_name || item.school_id %> ·
-                <%= item.teacher_name || item.teacher_id %> ·
-                <%= item.class_name || item.class_id %> ·
-                <%= item.subject %>
-              </p>
-            </div>
-            <div class="task-badges">
-              <span class="badge">Due <%= item.due_date %></span>
-            </div>
-          </div>
-
-          <p><%= item.description %></p>
-          <p class="muted"><strong>Estimated:</strong> <%= item.estimated_minutes %> mins</p>
-        </article>
-      <% }) %>
-    </div>
-  <% } %>
-</section>
+<script src="/client/db.js"></script>
+<script src="/client/homework.js"></script>
