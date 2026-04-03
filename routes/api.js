@@ -103,12 +103,7 @@ router.get('/setup-db', async (req, res) => {
 
     res.json({
       ok: true,
-      message: 'Multi-school-ready tables are set up',
-      seeded: {
-        school_id: 'school-001',
-        teacher_id: 'teacher-001',
-        class_id: 'class-001'
-      }
+      message: 'Multi-school-ready tables are set up'
     });
   } catch (error) {
     console.error('Error setting up database:', error);
