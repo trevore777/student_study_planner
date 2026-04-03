@@ -2,11 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../lib/turso');
 const ensureSchema = require('../lib/ensureSchema');
+const OpenAI = require('openai');
+
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 router.get('/debug-env', (req, res) => {
   res.json({
     tursoUrl: process.env.TURSO_DATABASE_URL ? 'SET' : 'MISSING',
-    tursoToken: process.env.TURSO_AUTH_TOKEN ? 'SET' : 'MISSING'
+    tursoToken: process.env.TURSO_AUTH_TOKEN ? 'SET' : 'MISSING',
+    openaiKey: process.env.OPENAI_API_KEY ? 'SET' : 'MISSING'
   });
 });
 
@@ -51,6 +57,7 @@ router.get('/teacher-homework', async (req, res) => {
         th.school_id,
         th.teacher_id,
         th.class_id,
+        th.class_name,
         th.subject,
         th.title,
         th.description,
@@ -59,7 +66,7 @@ router.get('/teacher-homework', async (req, res) => {
         th.created_at,
         s.name AS school_name,
         t.name AS teacher_name,
-        c.name AS class_name
+        c.name AS class_name_linked
       FROM teacher_homework th
       LEFT JOIN schools s ON s.id = th.school_id
       LEFT JOIN teachers t ON t.id = th.teacher_id
@@ -72,89 +79,86 @@ router.get('/teacher-homework', async (req, res) => {
     console.error('Error loading teacher homework:', error);
     res.status(500).json({
       ok: false,
-      error: 'Failed to load teacher homework.'
+      error: error.message || 'Failed to load teacher homework.'
     });
   }
 });
 
-router.get('/list-tables', async (req, res) => {
-  if (!db) {
-    return res.status(500).json({ ok: false, error: 'Database is not configured.' });
-  }
-
-  try {
-    const result = await db.execute(`
-      SELECT name
-      FROM sqlite_master
-      WHERE type='table'
-      ORDER BY name
-    `);
-
-    res.json({
-      ok: true,
-      tables: result.rows || []
+router.post('/tutor', async (req, res) => {
+  if (!openai) {
+    return res.status(500).json({
+      ok: false,
+      error: 'OpenAI is not configured. Check OPENAI_API_KEY.'
     });
-  } catch (error) {
-    console.error('Error listing tables:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-
-  router.get('/test-insert-homework', async (req, res) => {
-  if (!db) {
-    return res.status(500).json({ ok: false, error: 'Database is not configured.' });
   }
 
   try {
-    await ensureSchema();
+    const {
+      subject = '',
+      title = '',
+      notes = '',
+      dueDate = '',
+      question = ''
+    } = req.body || {};
 
-    const item = {
-      id: `hw-test-${Date.now()}`,
-      schoolId: 'school-001',
-      teacherId: 'teacher-001',
-      classId: 'class-001',
-      subject: 'English',
-      title: 'Test Homework',
-      description: 'Test insert from API route',
-      dueDate: '2026-04-10',
-      estimatedMinutes: 20,
-      createdAt: new Date().toISOString()
-    };
+    if (!title && !question) {
+      return res.status(400).json({
+        ok: false,
+        error: 'A task or question is required.'
+      });
+    }
 
-    await db.execute({
-      sql: `
-        INSERT INTO teacher_homework (
-          id,
-          school_id,
-          teacher_id,
-          class_id,
-          subject,
-          title,
-          description,
-          due_date,
-          estimated_minutes,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        item.id,
-        item.schoolId,
-        item.teacherId,
-        item.classId,
-        item.subject,
-        item.title,
-        item.description,
-        item.dueDate,
-        item.estimatedMinutes,
-        item.createdAt
+    const systemPrompt = `
+You are a school homework tutor inside a student planner app.
+
+Your job:
+- help the student understand the homework
+- explain concepts in simple language
+- break work into manageable steps
+- ask brief checking questions when useful
+- encourage the student to attempt the next step
+
+Rules:
+- do NOT complete the homework for the student
+- do NOT write final assessable answers for submission
+- do NOT produce full polished essays, paragraphs, or final solutions
+- keep responses supportive, practical, and concise
+- prefer bullet-free short paragraphs unless steps are needed
+- if the student asks for the answer, redirect to hints and worked process instead
+`;
+
+    const userPrompt = `
+Subject: ${subject}
+Task title: ${title}
+Task notes: ${notes}
+Due date: ${dueDate}
+Student question: ${question || 'Explain this task and help me get started.'}
+
+Respond in this structure:
+1. What this task is asking
+2. First steps to take
+3. One helpful hint or check question
+`;
+
+    const response = await openai.responses.create({
+      model: 'gpt-5.4-mini',
+      input: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ]
     });
 
-    res.json({ ok: true, inserted: item });
+    res.json({
+      ok: true,
+      reply: response.output_text || 'Sorry, I could not generate a response.'
+    });
   } catch (error) {
-    console.error('Error test inserting homework:', error);
-    res.status(500).json({ ok: false, error: error.message });
+    console.error('Tutor error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Unable to generate tutor response.'
+    });
   }
-});
 });
 
 module.exports = router;

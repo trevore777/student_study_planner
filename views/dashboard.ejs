@@ -71,6 +71,38 @@
 
 <section class="card">
   <div class="section-heading">
+    <h2>AI Tutor</h2>
+  </div>
+
+  <form id="tutorForm" class="stack-form">
+    <div class="field">
+      <label for="tutorTaskId">Task</label>
+      <select id="tutorTaskId" name="tutorTaskId">
+        <option value="">Choose a task</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="tutorQuestion">Question</label>
+      <textarea
+        id="tutorQuestion"
+        name="tutorQuestion"
+        rows="4"
+        placeholder="e.g. Explain what this homework is asking me to do."
+      ></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="button primary" type="submit" id="askTutorButton">Ask AI Tutor</button>
+    </div>
+  </form>
+
+  <div id="tutorStatus" class="muted" style="margin-top: 1rem;"></div>
+  <div id="tutorReply" class="card tutor-reply" style="display:none; margin-top: 1rem;"></div>
+</section>
+
+<section class="card">
+  <div class="section-heading">
     <h2>Consistency tracker</h2>
   </div>
 

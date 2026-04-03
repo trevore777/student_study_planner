@@ -131,6 +131,22 @@ async function populateSubjectDropdown() {
   });
 }
 
+async function populateTutorTaskDropdown() {
+  const tutorTaskSelect = document.getElementById('tutorTaskId');
+  if (!tutorTaskSelect) return;
+
+  const tasks = sortTasks(await getAllTasks());
+
+  tutorTaskSelect.innerHTML = '<option value="">Choose a task</option>';
+
+  tasks.forEach((task) => {
+    const option = document.createElement('option');
+    option.value = task.id;
+    option.textContent = `${task.subject} — ${task.title}`;
+    tutorTaskSelect.appendChild(option);
+  });
+}
+
 function buildTaskStatusMap(plannerItems, evidenceItems) {
   const plannedMap = {};
   const evidenceMap = {};
@@ -186,6 +202,7 @@ function taskCard(task, statusMap) {
 
       <div class="actions">
         <button class="button small" data-action="edit" data-id="${task.id}">Edit</button>
+        <button class="button small" data-action="tutor-task" data-id="${task.id}">Ask AI Tutor</button>
         ${
           task.status !== 'done'
             ? `<button class="button small primary" data-action="done" data-id="${task.id}">Mark done</button>`
@@ -296,6 +313,59 @@ function resetTaskForm() {
   document.getElementById('cancelEditButton').style.display = 'none';
 }
 
+async function askTutorForTask(task, questionText = '') {
+  const statusEl = document.getElementById('tutorStatus');
+  const replyEl = document.getElementById('tutorReply');
+  const tutorTaskSelect = document.getElementById('tutorTaskId');
+  const tutorQuestion = document.getElementById('tutorQuestion');
+  const askTutorButton = document.getElementById('askTutorButton');
+
+  if (tutorTaskSelect) {
+    tutorTaskSelect.value = task.id;
+  }
+
+  if (statusEl) statusEl.textContent = 'AI Tutor is thinking...';
+  if (replyEl) {
+    replyEl.style.display = 'none';
+    replyEl.innerHTML = '';
+  }
+  if (askTutorButton) askTutorButton.disabled = true;
+
+  try {
+    const response = await fetch('/api/tutor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: task.subject || '',
+        title: task.title || '',
+        notes: task.notes || '',
+        dueDate: task.dueDate || '',
+        question: questionText || (tutorQuestion ? tutorQuestion.value.trim() : '')
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'Tutor request failed.');
+    }
+
+    if (statusEl) statusEl.textContent = 'AI Tutor reply ready.';
+    if (replyEl) {
+      replyEl.style.display = 'block';
+      replyEl.innerHTML = `<h3>AI Tutor</h3><p>${escapeHtml(data.reply).replace(/\n/g, '<br>')}</p>`;
+    }
+  } catch (error) {
+    if (statusEl) statusEl.textContent = '';
+    if (replyEl) {
+      replyEl.style.display = 'block';
+      replyEl.innerHTML = `<p>${escapeHtml(error.message || 'Unable to get tutor help.')}</p>`;
+    }
+  } finally {
+    if (askTutorButton) askTutorButton.disabled = false;
+  }
+}
+
 async function renderDashboard() {
   const [tasks, plannerItems, evidenceItems] = await Promise.all([
     getAllTasks(),
@@ -344,6 +414,7 @@ async function renderDashboard() {
 
   renderConsistency(evidenceItems);
   await renderTeacherHomework();
+  await populateTutorTaskDropdown();
 }
 
 async function handleTaskFormSubmit(event) {
@@ -417,6 +488,27 @@ async function importTeacherHomework(button) {
   await renderDashboard();
 }
 
+async function handleTutorFormSubmit(event) {
+  event.preventDefault();
+
+  const selectedTaskId = document.getElementById('tutorTaskId').value;
+  if (!selectedTaskId) {
+    alert('Choose a task first.');
+    return;
+  }
+
+  const tasks = await getAllTasks();
+  const task = tasks.find((item) => item.id === selectedTaskId);
+
+  if (!task) {
+    alert('Task not found.');
+    return;
+  }
+
+  const questionText = document.getElementById('tutorQuestion').value.trim();
+  await askTutorForTask(task, questionText);
+}
+
 async function handleTaskActions(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
@@ -436,6 +528,11 @@ async function handleTaskActions(event) {
 
   if (action === 'edit') {
     fillTaskForm(task);
+    return;
+  }
+
+  if (action === 'tutor-task') {
+    await askTutorForTask(task, 'Explain this homework and help me get started.');
     return;
   }
 
@@ -459,6 +556,7 @@ async function handleTaskActions(event) {
 document.addEventListener('DOMContentLoaded', async () => {
   const taskForm = document.getElementById('taskForm');
   const cancelEditButton = document.getElementById('cancelEditButton');
+  const tutorForm = document.getElementById('tutorForm');
 
   if (taskForm) {
     taskForm.addEventListener('submit', handleTaskFormSubmit);
@@ -466,6 +564,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (cancelEditButton) {
     cancelEditButton.addEventListener('click', resetTaskForm);
+  }
+
+  if (tutorForm) {
+    tutorForm.addEventListener('submit', handleTutorFormSubmit);
   }
 
   document.body.addEventListener('click', handleTaskActions);
