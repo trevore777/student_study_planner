@@ -1,10 +1,12 @@
 const DB_NAME = 'studytrack_db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const TASK_STORE = 'tasks';
 const SUBJECT_STORE = 'subjects';
 const EVIDENCE_STORE = 'evidence';
 const PLANNER_STORE = 'planner_items';
+const STUDENT_PROFILE_STORE = 'student_profile';
+const STUDENT_CLASS_SELECTIONS_STORE = 'student_class_selections';
 
 const DEFAULT_SUBJECTS = [
   'English',
@@ -54,6 +56,15 @@ function openStudyTrackDB() {
         plannerStore.createIndex('day', 'day', { unique: false });
         plannerStore.createIndex('timeBlock', 'timeBlock', { unique: false });
         plannerStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(STUDENT_PROFILE_STORE)) {
+        db.createObjectStore(STUDENT_PROFILE_STORE, { keyPath: 'id' });
+      }
+
+      if (!db.objectStoreNames.contains(STUDENT_CLASS_SELECTIONS_STORE)) {
+        const selectionStore = db.createObjectStore(STUDENT_CLASS_SELECTIONS_STORE, { keyPath: 'id' });
+        selectionStore.createIndex('classId', 'classId', { unique: false });
       }
 
       const subjectCountRequest = subjectStore.count();
@@ -277,5 +288,80 @@ async function deletePlannerItem(id) {
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+}
+
+async function getStudentProfile() {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STUDENT_PROFILE_STORE, 'readonly');
+    const store = tx.objectStore(STUDENT_PROFILE_STORE);
+    const request = store.get('profile');
+
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveStudentProfile(profile) {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STUDENT_PROFILE_STORE, 'readwrite');
+    const store = tx.objectStore(STUDENT_PROFILE_STORE);
+    const request = store.put({
+      id: 'profile',
+      studentName: profile.studentName || '',
+      yearLevel: profile.yearLevel || '',
+      updatedAt: new Date().toISOString()
+    });
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getStudentClassSelections() {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STUDENT_CLASS_SELECTIONS_STORE, 'readonly');
+    const store = tx.objectStore(STUDENT_CLASS_SELECTIONS_STORE);
+    const request = store.getAll();
+
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveStudentClassSelections(selections) {
+  const db = await openStudyTrackDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STUDENT_CLASS_SELECTIONS_STORE, 'readwrite');
+    const store = tx.objectStore(STUDENT_CLASS_SELECTIONS_STORE);
+
+    const clearRequest = store.clear();
+
+    clearRequest.onerror = () => reject(clearRequest.error);
+
+    clearRequest.onsuccess = () => {
+      selections.forEach((selection) => {
+        store.put({
+          id: selection.id,
+          classId: selection.classId,
+          className: selection.className || '',
+          teacherId: selection.teacherId || '',
+          teacherName: selection.teacherName || '',
+          schoolId: selection.schoolId || '',
+          subject: selection.subject || '',
+          createdAt: new Date().toISOString()
+        });
+      });
+    };
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }

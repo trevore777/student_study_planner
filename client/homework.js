@@ -131,22 +131,6 @@ async function populateSubjectDropdown() {
   });
 }
 
-async function populateTutorTaskDropdown() {
-  const tutorTaskSelect = document.getElementById('tutorTaskId');
-  if (!tutorTaskSelect) return;
-
-  const tasks = sortTasks(await getAllTasks());
-
-  tutorTaskSelect.innerHTML = '<option value="">Choose a task</option>';
-
-  tasks.forEach((task) => {
-    const option = document.createElement('option');
-    option.value = task.id;
-    option.textContent = `${task.subject} — ${task.title}`;
-    tutorTaskSelect.appendChild(option);
-  });
-}
-
 function buildTaskStatusMap(plannerItems, evidenceItems) {
   const plannedMap = {};
   const evidenceMap = {};
@@ -202,7 +186,6 @@ function taskCard(task, statusMap) {
 
       <div class="actions">
         <button class="button small" data-action="edit" data-id="${task.id}">Edit</button>
-        <button class="button small" data-action="tutor-task" data-id="${task.id}">Ask AI Tutor</button>
         ${
           task.status !== 'done'
             ? `<button class="button small primary" data-action="done" data-id="${task.id}">Mark done</button>`
@@ -220,26 +203,31 @@ function teacherHomeworkCard(item) {
       <div class="task-top">
         <div>
           <h3>${escapeHtml(item.title)}</h3>
-          <p class="muted">${escapeHtml(item.class_name || item.className || '')} · ${escapeHtml(item.subject)}</p>
+          <p class="muted">
+            ${escapeHtml(item.class_name || '')}
+            ${item.teacher_name ? ` · ${escapeHtml(item.teacher_name)}` : ''}
+            ${item.subject ? ` · ${escapeHtml(item.subject)}` : ''}
+          </p>
         </div>
         <div class="task-badges">
-          <span class="badge">Due ${escapeHtml(item.due_date || item.dueDate || 'No due date')}</span>
+          <span class="badge">Due ${escapeHtml(item.due_date || 'No due date')}</span>
         </div>
       </div>
 
       <p>${escapeHtml(item.description)}</p>
-      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(item.estimated_minutes || item.estimatedMinutes || 20)} mins</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(item.estimated_minutes || 20)} mins</p>
 
       <div class="actions">
         <button
           class="button small primary"
           data-action="import-teacher-homework"
           data-id="${item.id}"
+          data-class-id="${escapeHtml(item.class_id || '')}"
           data-subject="${escapeHtml(item.subject)}"
           data-title="${escapeHtml(item.title)}"
           data-description="${escapeHtml(item.description)}"
-          data-due-date="${escapeHtml(item.due_date || item.dueDate || '')}"
-          data-estimated-minutes="${escapeHtml(item.estimated_minutes || item.estimatedMinutes || 20)}"
+          data-due-date="${escapeHtml(item.due_date || '')}"
+          data-estimated-minutes="${escapeHtml(item.estimated_minutes || 20)}"
         >
           Add to my planner
         </button>
@@ -275,17 +263,33 @@ function renderConsistency(evidenceItems) {
   evidenceThisWeekEl.textContent = String(thisWeekCount);
 }
 
+async function getSelectedClassIds() {
+  const selections = await getStudentClassSelections();
+  return selections.map((item) => item.classId);
+}
+
 async function renderTeacherHomework() {
   const container = document.getElementById('teacherHomeworkList');
   if (!container) return;
 
   try {
-    const response = await fetch('/api/teacher-homework');
+    const [response, selectedClassIds] = await Promise.all([
+      fetch('/api/teacher-homework'),
+      getSelectedClassIds()
+    ]);
+
     const items = await response.json();
 
-    container.innerHTML = items.length
-      ? items.map(teacherHomeworkCard).join('')
-      : '<p>No teacher-posted homework yet.</p>';
+    if (!selectedClassIds.length) {
+      container.innerHTML = '<p>No classes selected yet. Go to Settings and choose your classes.</p>';
+      return;
+    }
+
+    const filteredItems = items.filter((item) => selectedClassIds.includes(item.class_id));
+
+    container.innerHTML = filteredItems.length
+      ? filteredItems.map(teacherHomeworkCard).join('')
+      : '<p>No teacher-posted homework for your selected classes yet.</p>';
   } catch (error) {
     container.innerHTML = '<p>Unable to load teacher-posted homework.</p>';
   }
@@ -311,59 +315,6 @@ function resetTaskForm() {
   document.getElementById('estimatedMinutes').value = 20;
   document.getElementById('saveTaskButton').textContent = 'Save homework';
   document.getElementById('cancelEditButton').style.display = 'none';
-}
-
-async function askTutorForTask(task, questionText = '') {
-  const statusEl = document.getElementById('tutorStatus');
-  const replyEl = document.getElementById('tutorReply');
-  const tutorTaskSelect = document.getElementById('tutorTaskId');
-  const tutorQuestion = document.getElementById('tutorQuestion');
-  const askTutorButton = document.getElementById('askTutorButton');
-
-  if (tutorTaskSelect) {
-    tutorTaskSelect.value = task.id;
-  }
-
-  if (statusEl) statusEl.textContent = 'AI Tutor is thinking...';
-  if (replyEl) {
-    replyEl.style.display = 'none';
-    replyEl.innerHTML = '';
-  }
-  if (askTutorButton) askTutorButton.disabled = true;
-
-  try {
-    const response = await fetch('/api/tutor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: task.subject || '',
-        title: task.title || '',
-        notes: task.notes || '',
-        dueDate: task.dueDate || '',
-        question: questionText || (tutorQuestion ? tutorQuestion.value.trim() : '')
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || 'Tutor request failed.');
-    }
-
-    if (statusEl) statusEl.textContent = 'AI Tutor reply ready.';
-    if (replyEl) {
-      replyEl.style.display = 'block';
-      replyEl.innerHTML = `<h3>AI Tutor</h3><p>${escapeHtml(data.reply).replace(/\n/g, '<br>')}</p>`;
-    }
-  } catch (error) {
-    if (statusEl) statusEl.textContent = '';
-    if (replyEl) {
-      replyEl.style.display = 'block';
-      replyEl.innerHTML = `<p>${escapeHtml(error.message || 'Unable to get tutor help.')}</p>`;
-    }
-  } finally {
-    if (askTutorButton) askTutorButton.disabled = false;
-  }
 }
 
 async function renderDashboard() {
@@ -414,7 +365,6 @@ async function renderDashboard() {
 
   renderConsistency(evidenceItems);
   await renderTeacherHomework();
-  await populateTutorTaskDropdown();
 }
 
 async function handleTaskFormSubmit(event) {
@@ -471,6 +421,7 @@ async function importTeacherHomework(button) {
     status: 'todo',
     source: 'teacher',
     sourceId: button.dataset.id,
+    classId: button.dataset.classId || '',
     createdAt: new Date().toISOString()
   };
 
@@ -486,27 +437,6 @@ async function importTeacherHomework(button) {
 
   await addTask(task);
   await renderDashboard();
-}
-
-async function handleTutorFormSubmit(event) {
-  event.preventDefault();
-
-  const selectedTaskId = document.getElementById('tutorTaskId').value;
-  if (!selectedTaskId) {
-    alert('Choose a task first.');
-    return;
-  }
-
-  const tasks = await getAllTasks();
-  const task = tasks.find((item) => item.id === selectedTaskId);
-
-  if (!task) {
-    alert('Task not found.');
-    return;
-  }
-
-  const questionText = document.getElementById('tutorQuestion').value.trim();
-  await askTutorForTask(task, questionText);
 }
 
 async function handleTaskActions(event) {
@@ -531,11 +461,6 @@ async function handleTaskActions(event) {
     return;
   }
 
-  if (action === 'tutor-task') {
-    await askTutorForTask(task, 'Explain this homework and help me get started.');
-    return;
-  }
-
   if (action === 'done') {
     task.status = 'done';
     await updateTask(task);
@@ -556,7 +481,6 @@ async function handleTaskActions(event) {
 document.addEventListener('DOMContentLoaded', async () => {
   const taskForm = document.getElementById('taskForm');
   const cancelEditButton = document.getElementById('cancelEditButton');
-  const tutorForm = document.getElementById('tutorForm');
 
   if (taskForm) {
     taskForm.addEventListener('submit', handleTaskFormSubmit);
@@ -564,10 +488,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (cancelEditButton) {
     cancelEditButton.addEventListener('click', resetTaskForm);
-  }
-
-  if (tutorForm) {
-    tutorForm.addEventListener('submit', handleTutorFormSubmit);
   }
 
   document.body.addEventListener('click', handleTaskActions);

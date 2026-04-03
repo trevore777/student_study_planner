@@ -447,3 +447,17 @@ textarea {
 .teacher-panel {
   margin-top: 1rem;
 }
+.class-select-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.class-select-card input[type="checkbox"] {
+  width: auto;
+  margin-top: 0.2rem;
+}
