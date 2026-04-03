@@ -77,4 +77,27 @@ router.get('/teacher-homework', async (req, res) => {
   }
 });
 
+router.get('/list-tables', async (req, res) => {
+  if (!db) {
+    return res.status(500).json({ ok: false, error: 'Database is not configured.' });
+  }
+
+  try {
+    const result = await db.execute(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type='table'
+      ORDER BY name
+    `);
+
+    res.json({
+      ok: true,
+      tables: result.rows || []
+    });
+  } catch (error) {
+    console.error('Error listing tables:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 module.exports = router;
