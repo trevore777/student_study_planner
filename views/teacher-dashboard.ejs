@@ -1,7 +1,7 @@
 <section class="page-header">
   <div>
     <h1>Teacher Dashboard</h1>
-    <p class="lede">Manage posted homework with school-ready structure.</p>
+    <p class="lede">Manage homework and review Kings Credit challenge claims.</p>
   </div>
 </section>
 
@@ -14,10 +14,41 @@
 
 <section class="card">
   <div class="section-heading">
+    <h2>Kings Credit claims</h2>
+  </div>
+
+  <% if (!creditClaims || !creditClaims.length) { %>
+    <p>No Kings Credit claims yet.</p>
+  <% } else { %>
+    <div class="task-list">
+      <% creditClaims.forEach(item => { %>
+        <article class="task-card">
+          <div class="task-top">
+            <div>
+              <h3><%= item.student_name %></h3>
+              <p class="muted">
+                <%= item.year_level ? `Year ${item.year_level}` : 'Year level not set' %>
+              </p>
+            </div>
+            <div class="task-badges">
+              <span class="badge"><%= item.challenge_days %> / 21 days</span>
+              <span class="badge <%= item.status === 'approved' ? 'badge-success' : '' %>"><%= item.status %></span>
+            </div>
+          </div>
+
+          <p class="muted"><strong>Claimed:</strong> <%= item.claimed_at %></p>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<section class="card">
+  <div class="section-heading">
     <h2>Published homework</h2>
   </div>
 
-  <% if (!homeworkItems.length) { %>
+  <% if (!homeworkItems || !homeworkItems.length) { %>
     <p>No homework posted yet.</p>
   <% } else { %>
     <div class="task-list">

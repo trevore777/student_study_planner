@@ -115,6 +115,121 @@ function calculateBestStreak(sortedDatesAsc) {
   return best;
 }
 
+function getChallengeMessages() {
+  return [
+    'Small steps every day build strong habits.',
+    'Show up today. Consistency matters.',
+    'One completed session is real progress.',
+    'Good routines make hard work easier.',
+    'Today’s effort builds tomorrow’s confidence.',
+    'Keep going. Small wins add up.',
+    'Steady work creates strong habits.',
+    'Do today’s work well. That is progress.'
+  ];
+}
+
+function calculateChallengeProgress(evidenceItems) {
+  const studyEvidence = evidenceItems.filter((item) => item.type === 'study-session');
+  const uniqueDates = [...new Set(studyEvidence.map((item) => dateOnly(item.createdAt)))].sort();
+  const completedDays = uniqueDates.length;
+  const targetDays = 21;
+  const earned = completedDays >= targetDays;
+  const progressDays = earned ? targetDays : completedDays;
+  const progressPercent = Math.min((progressDays / targetDays) * 100, 100);
+
+  return {
+    completedDays,
+    targetDays,
+    earned,
+    progressDays,
+    progressPercent
+  };
+}
+
+async function submitKingsCreditClaim(challenge) {
+  const statusEl = document.getElementById('claimKingsCreditStatus');
+  const button = document.getElementById('claimKingsCreditButton');
+
+  const profile = await getStudentProfile();
+
+  if (!profile || !profile.studentName) {
+    if (statusEl) {
+      statusEl.textContent = 'Add your name in Settings before claiming Kings Credit.';
+    }
+    return;
+  }
+
+  if (button) button.disabled = true;
+  if (statusEl) statusEl.textContent = 'Submitting Kings Credit claim...';
+
+  try {
+    const response = await fetch('/api/claim-kings-credit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentName: profile.studentName || '',
+        yearLevel: profile.yearLevel || '',
+        challengeDays: challenge.completedDays,
+        schoolId: 'school-001'
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'Unable to submit Kings Credit claim.');
+    }
+
+    if (statusEl) {
+      statusEl.textContent = data.message || 'Kings Credit claim submitted.';
+    }
+  } catch (error) {
+    if (statusEl) {
+      statusEl.textContent = error.message || 'Unable to submit Kings Credit claim.';
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function renderChallenge(evidenceItems) {
+  const countEl = document.getElementById('challengeCount');
+  const fillEl = document.getElementById('challengeBarFill');
+  const statusEl = document.getElementById('challengeStatus');
+  const messageEl = document.getElementById('challengeMessage');
+  const claimButton = document.getElementById('claimKingsCreditButton');
+  const claimStatus = document.getElementById('claimKingsCreditStatus');
+
+  if (!countEl || !fillEl || !statusEl || !messageEl || !claimButton || !claimStatus) return;
+
+  const challenge = calculateChallengeProgress(evidenceItems);
+  const messages = getChallengeMessages();
+  const messageIndex = challenge.completedDays % messages.length;
+
+  countEl.textContent = `${challenge.progressDays} / ${challenge.targetDays} days`;
+  fillEl.style.width = `${challenge.progressPercent}%`;
+
+  claimButton.style.display = 'none';
+
+  if (challenge.earned) {
+    statusEl.textContent = 'Kings Credit goal reached. Submit your claim for teacher review.';
+    messageEl.textContent = 'You earned this through steady effort. Well done.';
+    claimButton.style.display = 'inline-block';
+    claimButton.onclick = () => submitKingsCreditClaim(challenge);
+  } else if (challenge.completedDays === 0) {
+    statusEl.textContent = 'Complete a study session today to begin your progress.';
+    messageEl.textContent = messages[messageIndex];
+  } else {
+    const remaining = challenge.targetDays - challenge.progressDays;
+    statusEl.textContent = `${remaining} day${remaining === 1 ? '' : 's'} to Kings Credit progress.`;
+    messageEl.textContent = messages[messageIndex];
+  }
+
+  if (!challenge.earned) {
+    claimStatus.textContent = '';
+  }
+}
+
 async function populateSubjectDropdown() {
   const subjectSelect = document.getElementById('subject');
   if (!subjectSelect) return;
@@ -364,6 +479,7 @@ async function renderDashboard() {
   }
 
   renderConsistency(evidenceItems);
+  renderChallenge(evidenceItems);
   await renderTeacherHomework();
 }
 

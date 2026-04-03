@@ -19,7 +19,7 @@ router.get('/dashboard', async (req, res) => {
   try {
     await ensureSchema();
 
-    const result = await db.execute(`
+    const homeworkResult = await db.execute(`
       SELECT
         th.id,
         th.school_id,
@@ -42,13 +42,75 @@ router.get('/dashboard', async (req, res) => {
       ORDER BY th.created_at DESC
     `);
 
+    const claimsResult = await db.execute(`
+      SELECT
+        id,
+        school_id,
+        student_name,
+        year_level,
+        challenge_days,
+        claimed_at,
+        status
+      FROM credit_claims
+      ORDER BY claimed_at DESC
+    `);
+
     res.render('teacher-dashboard', {
       title: 'Teacher Dashboard',
-      homeworkItems: result.rows || []
+      homeworkItems: homeworkResult.rows || [],
+      creditClaims: claimsResult.rows || []
     });
   } catch (error) {
     console.error('Error loading teacher dashboard:', error);
     res.status(500).send(`Unable to load teacher dashboard. ${error.message}`);
+  }
+});
+
+router.post('/claims/:id/approve', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
+  try {
+    await ensureSchema();
+
+    await db.execute({
+      sql: `
+        UPDATE credit_claims
+        SET status = 'approved'
+        WHERE id = ?
+      `,
+      args: [req.params.id]
+    });
+
+    res.redirect('/teacher/dashboard');
+  } catch (error) {
+    console.error('Error approving Kings Credit claim:', error);
+    res.status(500).send(`Unable to approve claim. ${error.message}`);
+  }
+});
+
+router.post('/claims/:id/reject', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
+  try {
+    await ensureSchema();
+
+    await db.execute({
+      sql: `
+        UPDATE credit_claims
+        SET status = 'rejected'
+        WHERE id = ?
+      `,
+      args: [req.params.id]
+    });
+
+    res.redirect('/teacher/dashboard');
+  } catch (error) {
+    console.error('Error rejecting Kings Credit claim:', error);
+    res.status(500).send(`Unable to reject claim. ${error.message}`);
   }
 });
 
@@ -142,8 +204,6 @@ router.post('/homework/new', async (req, res) => {
       estimatedMinutes,
       createdAt: new Date().toISOString()
     };
-
-    console.log('Submitting teacher homework:', newItem);
 
     await db.execute({
       sql: `
