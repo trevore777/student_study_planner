@@ -517,3 +517,8 @@ textarea {
   margin-top: 0.4rem;
   font-weight: 600;
 }
+
+.badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
