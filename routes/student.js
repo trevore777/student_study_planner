@@ -29,4 +29,24 @@ router.get('/study', (req, res) => {
   res.render('study', { title: 'Study Session' });
 });
 
+router.get('/my-homework', async (req, res) => {
+  const STUDENT_CLASS_ID = 'class-001'; // temporary
+
+  const result = await db.execute(`
+  SELECT *
+  FROM teacher_homework
+  WHERE class_id IN (
+    SELECT class_id
+    FROM student_classes
+    WHERE student_id = ?
+  )
+  ORDER BY due_date ASC
+`, ['student-001']);
+
+  res.render('student-homework', {
+    title: 'My Homework',
+    homeworkItems: result.rows || []
+  });
+});
+
 module.exports = router;

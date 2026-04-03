@@ -70,3 +70,28 @@ CREATE TABLE teacher_posts (
   resource_url TEXT,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS students (
+  id TEXT PRIMARY KEY,
+  school_id TEXT NOT NULL,
+  class_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO students (
+  id, school_id, class_id, name, created_at
+) VALUES (
+  'student-001',
+  'school-001',
+  'class-001',
+  'Test Student',
+  datetime('now')
+);
+
+CREATE TABLE IF NOT EXISTS student_classes (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  class_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

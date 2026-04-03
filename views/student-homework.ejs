@@ -1,0 +1,18 @@
+<section class="page-header">
+  <h1>My Homework</h1>
+</section>
+
+<section class="card">
+  <% if (!homeworkItems.length) { %>
+    <p>No homework assigned.</p>
+  <% } else { %>
+    <% homeworkItems.forEach(item => { %>
+      <article class="task-card">
+        <h3><%= item.title %></h3>
+        <p><%= item.subject %></p>
+        <p><%= item.description %></p>
+        <p><strong>Due:</strong> <%= item.due_date %></p>
+      </article>
+    <% }) %>
+  <% } %>
+</section>
