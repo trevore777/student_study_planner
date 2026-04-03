@@ -19,12 +19,12 @@ function sortTasks(tasks) {
   return [...tasks].sort((a, b) => {
     if (a.status === 'done' && b.status !== 'done') return 1;
     if (a.status !== 'done' && b.status === 'done') return -1;
-    return String(a.dueDate).localeCompare(String(b.dueDate));
+    return String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31'));
   });
 }
 
 function isOverdue(task) {
-  return task.status !== 'done' && task.dueDate < todayISO();
+  return task.status !== 'done' && task.dueDate && task.dueDate < todayISO();
 }
 
 function isDueToday(task) {
@@ -180,11 +180,12 @@ function taskCard(task, statusMap) {
         </div>
       </div>
 
-      <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate)}</p>
-      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes)} mins</p>
+      <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate || 'No due date')}</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
 
       <div class="actions">
+        <button class="button small" data-action="edit" data-id="${task.id}">Edit</button>
         ${
           task.status !== 'done'
             ? `<button class="button small primary" data-action="done" data-id="${task.id}">Mark done</button>`
@@ -202,27 +203,26 @@ function teacherHomeworkCard(item) {
       <div class="task-top">
         <div>
           <h3>${escapeHtml(item.title)}</h3>
-          <p class="muted">${escapeHtml(item.className)} · ${escapeHtml(item.subject)}</p>
+          <p class="muted">${escapeHtml(item.class_name || item.className || '')} · ${escapeHtml(item.subject)}</p>
         </div>
         <div class="task-badges">
-          <span class="badge">Due ${escapeHtml(item.dueDate)}</span>
+          <span class="badge">Due ${escapeHtml(item.due_date || item.dueDate || 'No due date')}</span>
         </div>
       </div>
 
       <p>${escapeHtml(item.description)}</p>
-      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(item.estimatedMinutes)} mins</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(item.estimated_minutes || item.estimatedMinutes || 20)} mins</p>
 
       <div class="actions">
         <button
           class="button small primary"
           data-action="import-teacher-homework"
           data-id="${item.id}"
-          data-class-name="${escapeHtml(item.className)}"
           data-subject="${escapeHtml(item.subject)}"
           data-title="${escapeHtml(item.title)}"
           data-description="${escapeHtml(item.description)}"
-          data-due-date="${escapeHtml(item.dueDate)}"
-          data-estimated-minutes="${escapeHtml(item.estimatedMinutes)}"
+          data-due-date="${escapeHtml(item.due_date || item.dueDate || '')}"
+          data-estimated-minutes="${escapeHtml(item.estimated_minutes || item.estimatedMinutes || 20)}"
         >
           Add to my planner
         </button>
@@ -272,6 +272,28 @@ async function renderTeacherHomework() {
   } catch (error) {
     container.innerHTML = '<p>Unable to load teacher-posted homework.</p>';
   }
+}
+
+function fillTaskForm(task) {
+  document.getElementById('taskId').value = task.id;
+  document.getElementById('subject').value = task.subject || '';
+  document.getElementById('title').value = task.title || '';
+  document.getElementById('dueDate').value = task.dueDate || '';
+  document.getElementById('estimatedMinutes').value = task.estimatedMinutes || 20;
+  document.getElementById('notes').value = task.notes || '';
+
+  document.getElementById('saveTaskButton').textContent = 'Update homework';
+  document.getElementById('cancelEditButton').style.display = 'inline-block';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetTaskForm() {
+  document.getElementById('taskForm').reset();
+  document.getElementById('taskId').value = '';
+  document.getElementById('estimatedMinutes').value = 20;
+  document.getElementById('saveTaskButton').textContent = 'Save homework';
+  document.getElementById('cancelEditButton').style.display = 'none';
 }
 
 async function renderDashboard() {
@@ -329,22 +351,40 @@ async function handleTaskFormSubmit(event) {
 
   const form = event.target;
   const formData = new FormData(form);
+  const editingId = formData.get('taskId');
 
-  const task = {
-    id: generateId(),
-    subject: formData.get('subject'),
-    title: formData.get('title'),
-    dueDate: formData.get('dueDate'),
-    estimatedMinutes: Number(formData.get('estimatedMinutes')) || 20,
-    notes: formData.get('notes'),
-    status: 'todo',
-    createdAt: new Date().toISOString()
-  };
+  if (editingId) {
+    const tasks = await getAllTasks();
+    const existingTask = tasks.find((item) => item.id === editingId);
 
-  await addTask(task);
-  form.reset();
-  document.getElementById('estimatedMinutes').value = 20;
+    if (!existingTask) {
+      alert('Task not found.');
+      return;
+    }
 
+    existingTask.subject = formData.get('subject');
+    existingTask.title = formData.get('title');
+    existingTask.dueDate = formData.get('dueDate');
+    existingTask.estimatedMinutes = Number(formData.get('estimatedMinutes')) || 20;
+    existingTask.notes = formData.get('notes');
+
+    await updateTask(existingTask);
+  } else {
+    const task = {
+      id: generateId(),
+      subject: formData.get('subject'),
+      title: formData.get('title'),
+      dueDate: formData.get('dueDate'),
+      estimatedMinutes: Number(formData.get('estimatedMinutes')) || 20,
+      notes: formData.get('notes'),
+      status: 'todo',
+      createdAt: new Date().toISOString()
+    };
+
+    await addTask(task);
+  }
+
+  resetTaskForm();
   await populateSubjectDropdown();
   await renderDashboard();
 }
@@ -354,7 +394,7 @@ async function importTeacherHomework(button) {
     id: generateId(),
     subject: button.dataset.subject,
     title: button.dataset.title,
-    dueDate: button.dataset.dueDate,
+    dueDate: button.dataset.dueDate || '',
     estimatedMinutes: Number(button.dataset.estimatedMinutes) || 20,
     notes: button.dataset.description,
     status: 'todo',
@@ -394,6 +434,11 @@ async function handleTaskActions(event) {
 
   if (!task) return;
 
+  if (action === 'edit') {
+    fillTaskForm(task);
+    return;
+  }
+
   if (action === 'done') {
     task.status = 'done';
     await updateTask(task);
@@ -413,9 +458,14 @@ async function handleTaskActions(event) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const taskForm = document.getElementById('taskForm');
+  const cancelEditButton = document.getElementById('cancelEditButton');
 
   if (taskForm) {
     taskForm.addEventListener('submit', handleTaskFormSubmit);
+  }
+
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener('click', resetTaskForm);
   }
 
   document.body.addEventListener('click', handleTaskActions);
