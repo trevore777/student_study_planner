@@ -25,6 +25,7 @@ router.get('/dashboard', async (req, res) => {
         th.school_id,
         th.teacher_id,
         th.class_id,
+        th.class_name,
         th.subject,
         th.title,
         th.description,
@@ -33,7 +34,7 @@ router.get('/dashboard', async (req, res) => {
         th.created_at,
         s.name AS school_name,
         t.name AS teacher_name,
-        c.name AS class_name
+        c.name AS linked_class_name
       FROM teacher_homework th
       LEFT JOIN schools s ON s.id = th.school_id
       LEFT JOIN teachers t ON t.id = th.teacher_id
@@ -102,32 +103,47 @@ router.post('/homework/new', async (req, res) => {
   try {
     await ensureSchema();
 
+    const schoolId = (req.body.schoolId || DEFAULT_SCHOOL_ID).trim();
+    const teacherId = (req.body.teacherId || DEFAULT_TEACHER_ID).trim();
+    const classId = (req.body.classId || DEFAULT_CLASS_ID).trim();
+    const subject = (req.body.subject || '').trim();
+    const title = (req.body.title || '').trim();
+    const description = (req.body.description || '').trim();
+    const dueDate = (req.body.dueDate || '').trim();
+    const estimatedMinutes = Number(req.body.estimatedMinutes) || 20;
+
+    if (!schoolId || !teacherId || !classId || !subject || !title || !description || !dueDate) {
+      return res.status(400).send('Missing required homework fields.');
+    }
+
+    const classLookup = await db.execute({
+      sql: `
+        SELECT id, name
+        FROM classes
+        WHERE id = ?
+        LIMIT 1
+      `,
+      args: [classId]
+    });
+
+    const selectedClass = (classLookup.rows || [])[0];
+    const className = selectedClass?.name || 'Unknown Class';
+
     const newItem = {
       id: `hw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      schoolId: (req.body.schoolId || DEFAULT_SCHOOL_ID).trim(),
-      teacherId: (req.body.teacherId || DEFAULT_TEACHER_ID).trim(),
-      classId: (req.body.classId || DEFAULT_CLASS_ID).trim(),
-      subject: (req.body.subject || '').trim(),
-      title: (req.body.title || '').trim(),
-      description: (req.body.description || '').trim(),
-      dueDate: (req.body.dueDate || '').trim(),
-      estimatedMinutes: Number(req.body.estimatedMinutes) || 20,
+      schoolId,
+      teacherId,
+      classId,
+      className,
+      subject,
+      title,
+      description,
+      dueDate,
+      estimatedMinutes,
       createdAt: new Date().toISOString()
     };
 
     console.log('Submitting teacher homework:', newItem);
-
-    if (
-      !newItem.schoolId ||
-      !newItem.teacherId ||
-      !newItem.classId ||
-      !newItem.subject ||
-      !newItem.title ||
-      !newItem.description ||
-      !newItem.dueDate
-    ) {
-      return res.status(400).send(`Missing required homework fields. ${JSON.stringify(newItem)}`);
-    }
 
     await db.execute({
       sql: `
@@ -136,19 +152,21 @@ router.post('/homework/new', async (req, res) => {
           school_id,
           teacher_id,
           class_id,
+          class_name,
           subject,
           title,
           description,
           due_date,
           estimated_minutes,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         newItem.id,
         newItem.schoolId,
         newItem.teacherId,
         newItem.classId,
+        newItem.className,
         newItem.subject,
         newItem.title,
         newItem.description,
@@ -179,6 +197,7 @@ router.get('/summary', async (req, res) => {
         th.school_id,
         th.teacher_id,
         th.class_id,
+        th.class_name,
         th.subject,
         th.title,
         th.description,
@@ -187,12 +206,12 @@ router.get('/summary', async (req, res) => {
         th.created_at,
         s.name AS school_name,
         t.name AS teacher_name,
-        c.name AS class_name
+        c.name AS linked_class_name
       FROM teacher_homework th
       LEFT JOIN schools s ON s.id = th.school_id
       LEFT JOIN teachers t ON t.id = th.teacher_id
       LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY s.name ASC, c.name ASC, th.due_date ASC
+      ORDER BY s.name ASC, th.class_name ASC, th.due_date ASC
     `);
 
     res.render('teacher-summary', {
