@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../lib/turso');
+const ensureSchema = require('../lib/ensureSchema');
 
 const DEFAULT_SCHOOL_ID = 'school-001';
 const DEFAULT_TEACHER_ID = 'teacher-001';
@@ -16,6 +17,8 @@ router.get('/dashboard', async (req, res) => {
   }
 
   try {
+    await ensureSchema();
+
     const result = await db.execute(`
       SELECT
         th.id,
@@ -54,6 +57,8 @@ router.get('/homework/new', async (req, res) => {
   }
 
   try {
+    await ensureSchema();
+
     const schoolsResult = await db.execute(`
       SELECT id, name, short_code
       FROM schools
@@ -95,6 +100,8 @@ router.post('/homework/new', async (req, res) => {
   }
 
   try {
+    await ensureSchema();
+
     const newItem = {
       id: `hw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       schoolId: (req.body.schoolId || DEFAULT_SCHOOL_ID).trim(),
@@ -162,6 +169,8 @@ router.get('/summary', async (req, res) => {
   }
 
   try {
+    await ensureSchema();
+
     const result = await db.execute(`
       SELECT
         th.id,
