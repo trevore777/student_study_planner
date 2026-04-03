@@ -160,6 +160,47 @@ router.post('/homework/new', async (req, res) => {
   } catch (error) {
     console.error('Error creating teacher homework:', error);
     res.status(500).send('Unable to save homework.');
+    router.get('/dashboard', async (req, res) => {
+  if (!db) {
+    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
+  }
+
+  try {
+    console.log('Teacher dashboard: calling ensureSchema()');
+    await ensureSchema();
+    console.log('Teacher dashboard: ensureSchema() finished');
+
+    const result = await db.execute(`
+      SELECT
+        th.id,
+        th.school_id,
+        th.teacher_id,
+        th.class_id,
+        th.subject,
+        th.title,
+        th.description,
+        th.due_date,
+        th.estimated_minutes,
+        th.created_at,
+        s.name AS school_name,
+        t.name AS teacher_name,
+        c.name AS class_name
+      FROM teacher_homework th
+      LEFT JOIN schools s ON s.id = th.school_id
+      LEFT JOIN teachers t ON t.id = th.teacher_id
+      LEFT JOIN classes c ON c.id = th.class_id
+      ORDER BY th.created_at DESC
+    `);
+
+    res.render('teacher-dashboard', {
+      title: 'Teacher Dashboard',
+      homeworkItems: result.rows || []
+    });
+  } catch (error) {
+    console.error('Error loading teacher dashboard:', error);
+    res.status(500).send(`Unable to load teacher dashboard. ${error.message}`);
+  }
+});
   }
 });
 
