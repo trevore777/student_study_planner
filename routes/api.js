@@ -64,27 +64,28 @@ router.get('/teacher-homework', async (req, res) => {
     await ensureSchema();
 
     const result = await db.execute(`
-      SELECT
-        th.id,
-        th.school_id,
-        th.teacher_id,
-        th.class_id,
-        th.class_name,
-        th.subject,
-        th.title,
-        th.description,
-        th.due_date,
-        th.estimated_minutes,
-        th.created_at,
-        s.name AS school_name,
-        t.name AS teacher_name,
-        c.name AS class_name_linked
-      FROM teacher_homework th
-      LEFT JOIN schools s ON s.id = th.school_id
-      LEFT JOIN teachers t ON t.id = th.teacher_id
-      LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY th.created_at DESC
-    `);
+  SELECT
+    th.id,
+    th.school_id,
+    th.teacher_id,
+    th.class_id,
+    th.class_name,
+    th.subject,
+    th.title,
+    th.description,
+    th.due_date,
+    th.estimated_minutes,
+    th.created_at,
+    s.name AS school_name,
+    t.name AS teacher_name,
+    c.name AS class_name_linked,
+    c.year_level AS class_year_level
+  FROM teacher_homework th
+  LEFT JOIN schools s ON s.id = th.school_id
+  LEFT JOIN teachers t ON t.id = th.teacher_id
+  LEFT JOIN classes c ON c.id = th.class_id
+  ORDER BY th.created_at DESC
+`);
 
     res.json(result.rows || []);
   } catch (error) {

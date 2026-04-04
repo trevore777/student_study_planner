@@ -7,6 +7,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function normaliseYearLevel(value) {
+  return String(value || '').trim().replace(/^year\s*/i, '');
+}
+
 function groupClassesById(items) {
   const grouped = {};
 
@@ -18,10 +22,11 @@ function groupClassesById(items) {
       grouped[classId] = {
         id: classId,
         classId,
-        className: item.class_name || item.className || 'Unknown Class',
+        className: item.class_name || item.className || item.class_name_linked || 'Unknown Class',
         teacherId: item.teacher_id || item.teacherId || '',
         teacherName: item.teacher_name || item.teacherName || 'Unknown Teacher',
         schoolId: item.school_id || item.schoolId || '',
+        yearLevel: normaliseYearLevel(item.class_year_level || item.yearLevel || ''),
         subjects: new Set()
       };
     }
@@ -30,10 +35,16 @@ function groupClassesById(items) {
     if (subject) grouped[classId].subjects.add(subject);
   });
 
-  return Object.values(grouped).map((item) => ({
-    ...item,
-    subject: Array.from(item.subjects).sort().join(', ')
-  }));
+  return Object.values(grouped)
+    .map((item) => ({
+      ...item,
+      subject: Array.from(item.subjects).sort().join(', ')
+    }))
+    .sort((a, b) => {
+      const yearCompare = String(a.yearLevel).localeCompare(String(b.yearLevel), undefined, { numeric: true });
+      if (yearCompare !== 0) return yearCompare;
+      return String(a.className).localeCompare(String(b.className));
+    });
 }
 
 async function fetchAvailableClasses() {
@@ -46,20 +57,35 @@ async function fetchAvailableClasses() {
   return groupClassesById(items);
 }
 
-function renderAvailableClasses(classes, selections) {
+function filterClassesByYearLevel(classes, yearLevel) {
+  const cleanYear = normaliseYearLevel(yearLevel);
+
+  if (!cleanYear) return classes;
+
+  return classes.filter((item) => normaliseYearLevel(item.yearLevel) === cleanYear);
+}
+
+function renderAvailableClasses(classes, selections, yearLevel) {
   const container = document.getElementById('availableClassesList');
   const selectedClassIds = new Set(selections.map((item) => item.classId));
 
   if (!container) return;
 
-  if (!classes.length) {
-    container.innerHTML = '<p>No classes available yet. Ask a teacher to post homework first.</p>';
+  const filteredClasses = filterClassesByYearLevel(classes, yearLevel);
+
+  if (!filteredClasses.length) {
+    container.innerHTML = `
+      <p>
+        No classes found for ${yearLevel ? `Year ${escapeHtml(yearLevel)}` : 'this filter'} yet.
+        Ask a teacher to post homework for that year level.
+      </p>
+    `;
     return;
   }
 
   container.innerHTML = `
     <form id="classSelectionForm" class="stack-form">
-      ${classes.map((item) => `
+      ${filteredClasses.map((item) => `
         <label class="class-select-card">
           <input
             type="checkbox"
@@ -70,11 +96,16 @@ function renderAvailableClasses(classes, selections) {
             data-teacher-name="${escapeHtml(item.teacherName)}"
             data-school-id="${escapeHtml(item.schoolId)}"
             data-subject="${escapeHtml(item.subject)}"
+            data-year-level="${escapeHtml(item.yearLevel)}"
             ${selectedClassIds.has(item.classId) ? 'checked' : ''}
           />
           <div>
             <strong>${escapeHtml(item.className)}</strong>
-            <p class="muted">${escapeHtml(item.teacherName)}${item.subject ? ` · ${escapeHtml(item.subject)}` : ''}</p>
+            <p class="muted">
+              ${item.yearLevel ? `Year ${escapeHtml(item.yearLevel)} · ` : ''}
+              ${escapeHtml(item.teacherName)}
+              ${item.subject ? ` · ${escapeHtml(item.subject)}` : ''}
+            </p>
           </div>
         </label>
       `).join('')}
@@ -102,14 +133,17 @@ async function handleStudentProfileSubmit(event) {
   event.preventDefault();
 
   const formData = new FormData(event.target);
-
-  await saveStudentProfile({
+  const profile = {
     studentName: formData.get('studentName'),
-    yearLevel: formData.get('yearLevel')
-  });
+    yearLevel: normaliseYearLevel(formData.get('yearLevel'))
+  };
+
+  await saveStudentProfile(profile);
 
   const status = document.getElementById('studentSetupStatus');
-  if (status) status.textContent = 'Student profile saved.';
+  if (status) status.textContent = 'Student profile saved. Class list updated below.';
+
+  await initialiseClassSelectionArea();
 }
 
 async function handleClassSelectionSubmit(event) {
@@ -126,7 +160,8 @@ async function handleClassSelectionSubmit(event) {
     teacherId: input.dataset.teacherId || '',
     teacherName: input.dataset.teacherName || '',
     schoolId: input.dataset.schoolId || '',
-    subject: input.dataset.subject || ''
+    subject: input.dataset.subject || '',
+    yearLevel: input.dataset.yearLevel || ''
   }));
 
   await saveStudentClassSelections(selections);
@@ -139,22 +174,17 @@ async function handleClassSelectionSubmit(event) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const studentProfileForm = document.getElementById('studentProfileForm');
-
-  if (studentProfileForm) {
-    studentProfileForm.addEventListener('submit', handleStudentProfileSubmit);
-  }
-
-  await loadStudentProfileIntoForm();
-
+async function initialiseClassSelectionArea() {
   try {
-    const [classes, selections] = await Promise.all([
+    const [classes, selections, profile] = await Promise.all([
       fetchAvailableClasses(),
-      getStudentClassSelections()
+      getStudentClassSelections(),
+      getStudentProfile()
     ]);
 
-    renderAvailableClasses(classes, selections);
+    const yearLevel = normaliseYearLevel(profile?.yearLevel || '');
+
+    renderAvailableClasses(classes, selections, yearLevel);
 
     const classSelectionForm = document.getElementById('classSelectionForm');
     if (classSelectionForm) {
@@ -171,4 +201,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       container.innerHTML = `<p>${escapeHtml(error.message || 'Unable to load classes.')}</p>`;
     }
   }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const studentProfileForm = document.getElementById('studentProfileForm');
+
+  if (studentProfileForm) {
+    studentProfileForm.addEventListener('submit', handleStudentProfileSubmit);
+  }
+
+  await loadStudentProfileIntoForm();
+  await initialiseClassSelectionArea();
 });
