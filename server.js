@@ -1,5 +1,3 @@
-require('dotenv').config({ path: '.env.local' });
-
 const path = require('path');
 const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
