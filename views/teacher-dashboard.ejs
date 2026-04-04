@@ -1,3 +1,29 @@
+<%
+  function formatDateAU(value) {
+    if (!value) return 'No date';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  function formatDateTimeAU(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('en-AU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+%>
+
 <section class="page-header">
   <div>
     <h1>Teacher Dashboard</h1>
@@ -32,11 +58,25 @@
             </div>
             <div class="task-badges">
               <span class="badge"><%= item.challenge_days %> / 21 days</span>
-              <span class="badge <%= item.status === 'approved' ? 'badge-success' : '' %>"><%= item.status %></span>
+              <span class="badge <%= item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : '' %>">
+                <%= item.status %>
+              </span>
             </div>
           </div>
 
-          <p class="muted"><strong>Claimed:</strong> <%= item.claimed_at %></p>
+          <p class="muted"><strong>Claimed:</strong> <%= formatDateTimeAU(item.claimed_at) %></p>
+
+          <% if (item.status === 'pending') { %>
+            <div class="actions">
+              <form method="POST" action="/teacher/claims/<%= item.id %>/approve" style="display:inline;">
+                <button class="button small primary" type="submit">Approve</button>
+              </form>
+
+              <form method="POST" action="/teacher/claims/<%= item.id %>/reject" style="display:inline;">
+                <button class="button small danger" type="submit">Reject</button>
+              </form>
+            </div>
+          <% } %>
         </article>
       <% }) %>
     </div>
@@ -65,7 +105,7 @@
               </p>
             </div>
             <div class="task-badges">
-              <span class="badge">Due <%= item.due_date %></span>
+              <span class="badge">Due <%= formatDateAU(item.due_date) %></span>
             </div>
           </div>
 

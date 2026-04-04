@@ -6,6 +6,34 @@ function todayISO() {
   return new Date().toISOString().split('T')[0];
 }
 
+function formatDateAU(value) {
+  if (!value) return 'No due date';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function formatDateTimeAU(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -295,7 +323,7 @@ function taskCard(task, statusMap) {
         </div>
       </div>
 
-      <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate || 'No due date')}</p>
+      <p class="muted"><strong>Due:</strong> ${escapeHtml(formatDateAU(task.dueDate))}</p>
       <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
 
@@ -325,7 +353,7 @@ function teacherHomeworkCard(item) {
           </p>
         </div>
         <div class="task-badges">
-          <span class="badge">Due ${escapeHtml(item.due_date || 'No due date')}</span>
+          <span class="badge">Due ${escapeHtml(formatDateAU(item.due_date))}</span>
         </div>
       </div>
 

@@ -28,7 +28,10 @@
       <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
         <section class="card planner-day" data-day-card="<%= day %>">
           <div class="planner-day-header">
-            <h3><%= day %></h3>
+            <div>
+              <h3><%= day %></h3>
+              <p class="muted planner-day-date" data-day-date="<%= day %>"></p>
+            </div>
             <button
               class="button small"
               type="button"

@@ -45,7 +45,13 @@
 
       <div class="field">
         <label for="title">Homework task</label>
-        <input id="title" name="title" type="text" placeholder="e.g. Finish worksheet questions 1–10" required />
+        <input
+          id="title"
+          name="title"
+          type="text"
+          placeholder="e.g. Finish worksheet questions 1–10"
+          required
+        />
       </div>
 
       <div class="field">
@@ -55,17 +61,31 @@
 
       <div class="field">
         <label for="estimatedMinutes">Estimated minutes</label>
-        <input id="estimatedMinutes" name="estimatedMinutes" type="number" min="5" step="5" value="20" />
+        <input
+          id="estimatedMinutes"
+          name="estimatedMinutes"
+          type="number"
+          min="5"
+          step="5"
+          value="20"
+        />
       </div>
 
       <div class="field">
         <label for="notes">Notes</label>
-        <textarea id="notes" name="notes" rows="4" placeholder="Extra details, page numbers, teacher instructions..."></textarea>
+        <textarea
+          id="notes"
+          name="notes"
+          rows="4"
+          placeholder="Extra details, page numbers, teacher instructions..."
+        ></textarea>
       </div>
 
       <div class="actions">
         <button class="button primary" type="submit" id="saveTaskButton">Save homework</button>
-        <button class="button" type="button" id="cancelEditButton" style="display:none;">Cancel edit</button>
+        <button class="button" type="button" id="cancelEditButton" style="display:none;">
+          Cancel edit
+        </button>
       </div>
     </form>
   </article>

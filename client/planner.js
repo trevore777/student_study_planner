@@ -23,6 +23,55 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function formatDateAU(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function getStartOfCurrentWeekMonday() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(today);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(today.getDate() + diff);
+
+  return monday;
+}
+
+function getWeekDatesMap() {
+  const monday = getStartOfCurrentWeekMonday();
+  const map = {};
+
+  WEEK_DAYS.forEach((dayName, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    date.setHours(0, 0, 0, 0);
+    map[dayName] = date;
+  });
+
+  return map;
+}
+
+function renderPlannerDayDates() {
+  const weekDates = getWeekDatesMap();
+
+  WEEK_DAYS.forEach((dayName) => {
+    const el = document.querySelector(`[data-day-date="${dayName}"]`);
+    if (!el) return;
+    el.textContent = formatDateAU(weekDates[dayName]);
+  });
+}
+
 function taskSort(a, b) {
   const aDue = a?.dueDate || '9999-12-31';
   const bDue = b?.dueDate || '9999-12-31';
@@ -52,7 +101,7 @@ function taskCard(task) {
           <p class="muted">${escapeHtml(task.subject)}</p>
         </div>
         <div class="task-badges">
-          <span class="badge">Due ${escapeHtml(task.dueDate || 'No due date')}</span>
+          <span class="badge">Due ${escapeHtml(formatDateAU(task.dueDate) || 'No due date')}</span>
         </div>
       </div>
 
@@ -82,7 +131,7 @@ function selectedTaskCard(task) {
     <article class="task-card task-card-selected">
       <h3>${escapeHtml(task.title)}</h3>
       <p class="muted">${escapeHtml(task.subject)}</p>
-      <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate || 'No due date')}</p>
+      <p class="muted"><strong>Due:</strong> ${escapeHtml(formatDateAU(task.dueDate) || 'No due date')}</p>
       <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
     </article>
@@ -119,6 +168,41 @@ function plannerItemCard(item, task) {
       ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
     </article>
   `;
+}
+
+function compareDatesOnly(a, b) {
+  const first = new Date(a);
+  const second = new Date(b);
+
+  first.setHours(0, 0, 0, 0);
+  second.setHours(0, 0, 0, 0);
+
+  return first.getTime() - second.getTime();
+}
+
+function getPlanningDateMessage(task, plannedDate) {
+  if (!task?.dueDate) return null;
+
+  const dueDate = new Date(task.dueDate);
+  if (Number.isNaN(dueDate.getTime())) return null;
+
+  const comparison = compareDatesOnly(plannedDate, dueDate);
+
+  if (comparison > 0) {
+    return {
+      type: 'blocked',
+      message: `This needs to be done before ${formatDateAU(task.dueDate)}.`
+    };
+  }
+
+  if (comparison === 0) {
+    return {
+      type: 'warning',
+      message: `This task is due on ${formatDateAU(task.dueDate)}. Try to schedule it before then.`
+    };
+  }
+
+  return null;
 }
 
 async function renderPlannerTaskList() {
@@ -172,6 +256,20 @@ async function quickPlanToDay(day) {
   if (!selectedTask) {
     alert('Selected task not found.');
     return;
+  }
+
+  const weekDates = getWeekDatesMap();
+  const plannedDate = weekDates[day];
+  const planningMessage = getPlanningDateMessage(selectedTask, plannedDate);
+
+  if (planningMessage?.type === 'blocked') {
+    alert(planningMessage.message);
+    return;
+  }
+
+  if (planningMessage?.type === 'warning') {
+    const proceed = window.confirm(`${planningMessage.message}\n\nDo you still want to plan it for this day?`);
+    if (!proceed) return;
   }
 
   const item = {
@@ -240,6 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     plannerGrid.addEventListener('click', handleDayCardClick);
   }
 
+  renderPlannerDayDates();
   await renderPlannerTaskList();
   await renderSelectedTaskPanel();
   await renderPlannerWeek();

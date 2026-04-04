@@ -1,3 +1,16 @@
+<%
+  function formatDateAU(value) {
+    if (!value) return 'No date';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+%>
+
 <section class="page-header">
   <div>
     <h1>Class Summary</h1>
@@ -36,7 +49,7 @@
                   <li>
                     <strong><%= item.subject %></strong> —
                     <%= item.title %>
-                    (Due <%= item.due_date %>)
+                    (Due <%= formatDateAU(item.due_date) %>)
                   </li>
                 <% }) %>
               </ul>
