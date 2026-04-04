@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+router.get('/probe-12345', (req, res) => {
+  res.send('API PROBE 12345');
+});
 const db = require('../lib/turso');
 const ensureSchema = require('../lib/ensureSchema');
 const OpenAI = require('openai');
