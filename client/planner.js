@@ -36,6 +36,14 @@ function formatDateAU(value) {
   });
 }
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function isOverdue(task) {
+  return task?.status !== 'done' && task?.dueDate && task.dueDate < todayISO();
+}
+
 function getStartOfCurrentWeekMonday() {
   const today = new Date();
   const day = today.getDay();
@@ -92,6 +100,9 @@ function buildTaskMap(tasks) {
 
 function taskCard(task) {
   const isSelected = selectedTaskId === task.id;
+  const overdueBadge = isOverdue(task)
+    ? '<span class="badge badge-danger">Overdue</span>'
+    : '';
 
   return `
     <article class="task-card ${isSelected ? 'task-card-selected' : ''}">
@@ -101,6 +112,7 @@ function taskCard(task) {
           <p class="muted">${escapeHtml(task.subject)}</p>
         </div>
         <div class="task-badges">
+          ${overdueBadge}
           <span class="badge">Due ${escapeHtml(formatDateAU(task.dueDate) || 'No due date')}</span>
         </div>
       </div>

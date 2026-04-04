@@ -11,6 +11,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
 function formatDateAU(value) {
   if (!value) return 'No due date';
 
@@ -50,16 +54,24 @@ async function loadCurrentTask() {
   currentTask = tasks.find((task) => task.id === taskId);
 
   if (!currentTask) {
-    document.getElementById('studyTaskTitle').textContent = 'Task not found';
+    const titleEl = document.getElementById('studyTaskTitle');
+    if (titleEl) titleEl.textContent = 'Task not found';
     return;
   }
 
-  document.getElementById('studyTaskTitle').textContent = currentTask.title;
-  document.getElementById('studyTaskSubject').textContent = currentTask.subject || '';
-  document.getElementById('studyTaskDue').textContent = `Due: ${formatDateAU(currentTask.dueDate)}`;
-  document.getElementById('studyTaskNotes').innerHTML = currentTask.notes
-    ? escapeHtml(currentTask.notes).replace(/\n/g, '<br>')
-    : 'No task instructions available.';
+  const titleEl = document.getElementById('studyTaskTitle');
+  const subjectEl = document.getElementById('studyTaskSubject');
+  const dueEl = document.getElementById('studyTaskDue');
+  const notesEl = document.getElementById('studyTaskNotes');
+
+  if (titleEl) titleEl.textContent = currentTask.title || 'Untitled task';
+  if (subjectEl) subjectEl.textContent = currentTask.subject || '';
+  if (dueEl) dueEl.textContent = `Due: ${formatDateAU(currentTask.dueDate)}`;
+  if (notesEl) {
+    notesEl.innerHTML = currentTask.notes
+      ? escapeHtml(currentTask.notes).replace(/\n/g, '<br>')
+      : 'No task instructions available.';
+  }
 }
 
 function startTimer() {
@@ -91,6 +103,67 @@ function resetTimer() {
   updateTimerDisplay();
 }
 
+async function askStudyTutor(questionText) {
+  const statusEl = document.getElementById('studyTutorStatus');
+  const replyEl = document.getElementById('studyTutorReply');
+  const button = document.getElementById('studyTutorButton');
+
+  if (!currentTask) {
+    alert('No task loaded for tutoring.');
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'AI Tutor is thinking...';
+  if (replyEl) {
+    replyEl.style.display = 'none';
+    replyEl.innerHTML = '';
+  }
+  if (button) button.disabled = true;
+
+  try {
+    const response = await fetch('/api/tutor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: currentTask.subject || '',
+        title: currentTask.title || '',
+        notes: currentTask.notes || '',
+        dueDate: currentTask.dueDate || '',
+        question: questionText || 'Explain this homework and help me get started.'
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'Tutor request failed.');
+    }
+
+    if (statusEl) statusEl.textContent = 'AI Tutor reply ready.';
+    if (replyEl) {
+      replyEl.style.display = 'block';
+      replyEl.innerHTML = `<h3>AI Tutor</h3><p>${escapeHtml(data.reply).replace(/\n/g, '<br>')}</p>`;
+    }
+  } catch (error) {
+    if (statusEl) statusEl.textContent = '';
+    if (replyEl) {
+      replyEl.style.display = 'block';
+      replyEl.innerHTML = `<p>${escapeHtml(error.message || 'Unable to get tutor help.')}</p>`;
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function handleTutorSubmit(event) {
+  event.preventDefault();
+
+  const questionEl = document.getElementById('studyTutorQuestion');
+  const question = questionEl ? questionEl.value.trim() : '';
+
+  await askStudyTutor(question);
+}
+
 async function handleReflectionSubmit(event) {
   event.preventDefault();
 
@@ -99,8 +172,11 @@ async function handleReflectionSubmit(event) {
     return;
   }
 
-  const reflection = document.getElementById('studyReflection').value.trim();
-  const markTaskDone = document.getElementById('markTaskDone').checked;
+  const reflectionEl = document.getElementById('studyReflection');
+  const markDoneEl = document.getElementById('markTaskDone');
+
+  const reflection = reflectionEl ? reflectionEl.value.trim() : '';
+  const markTaskDone = markDoneEl ? markDoneEl.checked : false;
 
   if (!reflection) {
     alert('Please add a short reflection before saving.');
@@ -134,9 +210,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pauseButton = document.getElementById('pauseTimer');
   const resetButton = document.getElementById('resetTimer');
   const reflectionForm = document.getElementById('studyReflectionForm');
+  const tutorForm = document.getElementById('studyTutorForm');
 
   if (startButton) startButton.addEventListener('click', startTimer);
   if (pauseButton) pauseButton.addEventListener('click', pauseTimer);
   if (resetButton) resetButton.addEventListener('click', resetTimer);
   if (reflectionForm) reflectionForm.addEventListener('submit', handleReflectionSubmit);
+  if (tutorForm) tutorForm.addEventListener('submit', handleTutorSubmit);
 });
