@@ -2,16 +2,49 @@ const express = require('express');
 const router = express.Router();
 const db = require('../lib/turso');
 const ensureSchema = require('../lib/ensureSchema');
+const requireTeacherAuth = require('../middleware/requireTeacherAuth');
 
 const DEFAULT_SCHOOL_ID = 'school-001';
 const DEFAULT_TEACHER_ID = 'teacher-001';
 const DEFAULT_CLASS_ID = 'class-001';
 
 router.get('/login', (req, res) => {
-  res.render('teacher-login', { title: 'Teacher Login' });
+  if (req.session?.isTeacherLoggedIn) {
+    return res.redirect('/teacher/dashboard');
+  }
+
+  res.render('teacher-login', {
+    title: 'Teacher Login',
+    error: null
+  });
 });
 
-router.get('/dashboard', async (req, res) => {
+router.post('/login', (req, res) => {
+  const username = String(req.body.username || '').trim();
+  const password = String(req.body.password || '');
+
+  const expectedUsername = process.env.TEACHER_USERNAME || 'teacher';
+  const expectedPassword = process.env.TEACHER_PASSWORD || 'ChangeThisNow123!';
+
+  if (username === expectedUsername && password === expectedPassword) {
+    req.session.isTeacherLoggedIn = true;
+    req.session.teacherUsername = username;
+    return res.redirect('/teacher/dashboard');
+  }
+
+  return res.status(401).render('teacher-login', {
+    title: 'Teacher Login',
+    error: 'Incorrect username or password.'
+  });
+});
+
+router.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/teacher/login');
+  });
+});
+
+router.get('/dashboard', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }
@@ -66,7 +99,7 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-router.post('/claims/:id/approve', async (req, res) => {
+router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }
@@ -90,7 +123,7 @@ router.post('/claims/:id/approve', async (req, res) => {
   }
 });
 
-router.post('/claims/:id/reject', async (req, res) => {
+router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }
@@ -114,7 +147,7 @@ router.post('/claims/:id/reject', async (req, res) => {
   }
 });
 
-router.get('/homework/new', async (req, res) => {
+router.get('/homework/new', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }
@@ -157,7 +190,7 @@ router.get('/homework/new', async (req, res) => {
   }
 });
 
-router.post('/homework/new', async (req, res) => {
+router.post('/homework/new', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }
@@ -243,7 +276,7 @@ router.post('/homework/new', async (req, res) => {
   }
 });
 
-router.get('/summary', async (req, res) => {
+router.get('/summary', requireTeacherAuth, async (req, res) => {
   if (!db) {
     return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
   }

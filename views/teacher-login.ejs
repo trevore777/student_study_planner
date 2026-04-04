@@ -1,15 +1,29 @@
 <section class="page-header">
   <div>
-    <h1>Teacher Portal</h1>
-    <p class="lede">Post homework and view simple class-level activity.</p>
+    <h1>Teacher Login</h1>
+    <p class="lede">Sign in to manage homework and Kings Credit claims.</p>
   </div>
 </section>
 
-<section class="card">
-  <h2>Teacher tools</h2>
-  <div class="actions">
-    <a class="button primary" href="/teacher/dashboard">Open dashboard</a>
-    <a class="button" href="/teacher/homework/new">Post homework</a>
-    <a class="button" href="/teacher/summary">Class summary</a>
-  </div>
+<section class="card" style="max-width: 520px; margin: 0 auto;">
+  <% if (error) { %>
+    <p class="muted" style="color: #991b1b; margin-bottom: 1rem;"><%= error %></p>
+  <% } %>
+
+  <form method="POST" action="/teacher/login" class="stack-form">
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" required />
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required />
+    </div>
+
+    <div class="actions">
+      <button class="button primary" type="submit">Sign in</button>
+      <a class="button" href="/">Back</a>
+    </div>
+  </form>
 </section>
