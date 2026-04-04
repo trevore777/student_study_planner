@@ -3,36 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title ? `${title} | StudyTrack` : 'StudyTrack' %></title>
-  <meta name="description" content="StudyTrack helps students organise homework, plan study, and record progress." />
+  <title><%= title %> | StudyTrack</title>
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="manifest" href="/manifest.json" />
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="/">StudyTrack</a>
-
-      <nav class="nav" aria-label="Main navigation">
-        <a href="/" class="<%= title === 'StudyTrack' ? 'active' : '' %>">Home</a>
-        <a href="/dashboard" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a>
-        <a href="/planner" class="<%= title === 'Weekly Planner' ? 'active' : '' %>">Planner</a>
-        <a href="/subjects" class="<%= title === 'Subjects' ? 'active' : '' %>">Subjects</a>
-        <a href="/evidence" class="<%= title === 'Evidence Log' ? 'active' : '' %>">Evidence</a>
-        <a href="/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
-        <a href="/teacher/login">Teacher</a>
-      </nav>
-    </div>
+    <div class="brand">StudyTrack</div>
+    <nav class="nav">
+      <a href="/">Home</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/planner">Planner</a>
+      <a href="/subjects">Subjects</a>
+      <a href="/evidence">Evidence</a>
+      <a href="/settings">Settings</a>
+      <a href="/teacher/login">Teacher</a>
+    </nav>
   </header>
 
-  <main class="page container">
+  <main class="page">
     <%- body %>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>StudyTrack is a local-first planner prototype for student homework, study, and evidence of progress.</p>
-    </div>
-  </footer>
 </body>
 </html>
