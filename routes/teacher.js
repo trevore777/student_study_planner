@@ -9,7 +9,7 @@ const DEFAULT_TEACHER_ID = 'teacher-001';
 const DEFAULT_CLASS_ID = 'class-001';
 
 router.get('/login', (req, res) => {
-  if (req.session?.isTeacherLoggedIn) {
+  if (req.signedCookies?.teacher_auth === 'yes') {
     return res.redirect('/teacher/dashboard');
   }
 
@@ -27,20 +27,16 @@ router.post('/login', (req, res) => {
   const expectedPassword = String(process.env.TEACHER_PASSWORD || 'ChangeThisNow123!');
 
   if (username === expectedUsername && password === expectedPassword) {
-    req.session.isTeacherLoggedIn = true;
-    req.session.teacherUsername = username;
-
-    return req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).render('teacher-login', {
-          title: 'Teacher Login',
-          error: 'Unable to start teacher session.'
-        });
-      }
-
-      return res.redirect('/teacher/dashboard');
+    res.cookie('teacher_auth', 'yes', {
+      signed: true,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 8,
+      path: '/'
     });
+
+    return res.redirect('/teacher/dashboard');
   }
 
   return res.status(401).render('teacher-login', {
@@ -50,9 +46,10 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/teacher/login');
+  res.clearCookie('teacher_auth', {
+    path: '/'
   });
+  res.redirect('/teacher/login');
 });
 
 router.get('/dashboard', requireTeacherAuth, async (req, res) => {

@@ -1,5 +1,5 @@
 function requireTeacherAuth(req, res, next) {
-  if (req.session && req.session.isTeacherLoggedIn) {
+  if (req.signedCookies?.teacher_auth === 'yes') {
     return next();
   }
 
