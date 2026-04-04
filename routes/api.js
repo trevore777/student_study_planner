@@ -255,6 +255,15 @@ Respond in this structure:
       error: 'Unable to generate tutor response.'
     });
   }
+
+  router.get('/debug-teacher-auth', (req, res) => {
+  res.json({
+    teacherUsername: process.env.TEACHER_USERNAME ? 'SET' : 'MISSING',
+    teacherPassword: process.env.TEACHER_PASSWORD ? 'SET' : 'MISSING',
+    sessionSecret: process.env.SESSION_SECRET ? 'SET' : 'MISSING',
+    loggedIn: Boolean(req.session?.isTeacherLoggedIn)
+  });
+});
 });
 
 module.exports = router;

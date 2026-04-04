@@ -23,13 +23,24 @@ router.post('/login', (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
 
-  const expectedUsername = process.env.TEACHER_USERNAME || 'teacher';
-  const expectedPassword = process.env.TEACHER_PASSWORD || 'ChangeThisNow123!';
+  const expectedUsername = String(process.env.TEACHER_USERNAME || 'teacher').trim();
+  const expectedPassword = String(process.env.TEACHER_PASSWORD || 'ChangeThisNow123!');
 
   if (username === expectedUsername && password === expectedPassword) {
     req.session.isTeacherLoggedIn = true;
     req.session.teacherUsername = username;
-    return res.redirect('/teacher/dashboard');
+
+    return req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).render('teacher-login', {
+          title: 'Teacher Login',
+          error: 'Unable to start teacher session.'
+        });
+      }
+
+      return res.redirect('/teacher/dashboard');
+    });
   }
 
   return res.status(401).render('teacher-login', {
@@ -100,19 +111,11 @@ router.get('/dashboard', requireTeacherAuth, async (req, res) => {
 });
 
 router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
     await db.execute({
-      sql: `
-        UPDATE credit_claims
-        SET status = 'approved'
-        WHERE id = ?
-      `,
+      sql: `UPDATE credit_claims SET status = 'approved' WHERE id = ?`,
       args: [req.params.id]
     });
 
@@ -124,19 +127,11 @@ router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
 });
 
 router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
     await db.execute({
-      sql: `
-        UPDATE credit_claims
-        SET status = 'rejected'
-        WHERE id = ?
-      `,
+      sql: `UPDATE credit_claims SET status = 'rejected' WHERE id = ?`,
       args: [req.params.id]
     });
 
@@ -148,10 +143,6 @@ router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
 });
 
 router.get('/homework/new', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
@@ -191,10 +182,6 @@ router.get('/homework/new', requireTeacherAuth, async (req, res) => {
 });
 
 router.post('/homework/new', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
@@ -212,12 +199,7 @@ router.post('/homework/new', requireTeacherAuth, async (req, res) => {
     }
 
     const classLookup = await db.execute({
-      sql: `
-        SELECT id, name
-        FROM classes
-        WHERE id = ?
-        LIMIT 1
-      `,
+      sql: `SELECT id, name FROM classes WHERE id = ? LIMIT 1`,
       args: [classId]
     });
 
@@ -277,10 +259,6 @@ router.post('/homework/new', requireTeacherAuth, async (req, res) => {
 });
 
 router.get('/summary', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
