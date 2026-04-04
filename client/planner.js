@@ -8,6 +8,8 @@ const WEEK_DAYS = [
   'Sunday'
 ];
 
+let selectedTaskId = null;
+
 function generatePlannerId() {
   return `planner-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -31,39 +33,19 @@ function taskSort(a, b) {
   return String(aDue).localeCompare(String(bDue));
 }
 
-async function populatePlannerTaskDropdown() {
-  const select = document.getElementById('plannedTaskId');
-  if (!select) return;
-
-  const allTasks = await getAllTasks();
-  console.log('Planner loaded tasks:', allTasks);
-
-  const tasks = allTasks
-    .filter((task) => task && task.title && task.subject && task.status !== 'done')
-    .sort(taskSort);
-
-  select.innerHTML = '<option value="">Select a task</option>';
-
-  if (!tasks.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = 'No open tasks available';
-    option.disabled = true;
-    select.appendChild(option);
-    return;
-  }
-
+function buildTaskMap(tasks) {
+  const map = {};
   tasks.forEach((task) => {
-    const option = document.createElement('option');
-    option.value = task.id;
-    option.textContent = `${task.subject} — ${task.title} (Due ${task.dueDate || 'No due date'})`;
-    select.appendChild(option);
+    map[task.id] = task;
   });
+  return map;
 }
 
 function taskCard(task) {
+  const isSelected = selectedTaskId === task.id;
+
   return `
-    <article class="task-card">
+    <article class="task-card ${isSelected ? 'task-card-selected' : ''}">
       <div class="task-top">
         <div>
           <h3>${escapeHtml(task.title)}</h3>
@@ -76,6 +58,65 @@ function taskCard(task) {
 
       <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
       ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
+
+      <div class="actions">
+        <button
+          class="button small primary"
+          type="button"
+          data-action="select-task"
+          data-task-id="${task.id}"
+        >
+          ${isSelected ? 'Selected' : 'Select'}
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+function selectedTaskCard(task) {
+  if (!task) {
+    return 'No task selected. Tap a homework task to begin planning.';
+  }
+
+  return `
+    <article class="task-card task-card-selected">
+      <h3>${escapeHtml(task.title)}</h3>
+      <p class="muted">${escapeHtml(task.subject)}</p>
+      <p class="muted"><strong>Due:</strong> ${escapeHtml(task.dueDate || 'No due date')}</p>
+      <p class="muted"><strong>Estimated:</strong> ${escapeHtml(task.estimatedMinutes || 20)} mins</p>
+      ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
+    </article>
+  `;
+}
+
+function plannerItemCard(item, task) {
+  return `
+    <article class="planner-item-card">
+      <div class="planner-item-top">
+        <strong>${escapeHtml(item.timeBlock)}</strong>
+        <div class="actions">
+          <button
+            class="button small primary"
+            data-action="start-study"
+            data-task-id="${item.taskId}"
+            type="button"
+          >
+            Start
+          </button>
+          <button
+            class="button small danger"
+            data-action="delete-planner-item"
+            data-id="${item.id}"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <p><strong>${escapeHtml(task ? task.title : 'Unknown task')}</strong></p>
+      <p class="muted">${escapeHtml(task ? task.subject : 'No subject')}</p>
+      ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
     </article>
   `;
 }
@@ -93,42 +134,14 @@ async function renderPlannerTaskList() {
     : '<p>No open tasks to plan yet. Add homework on the dashboard first.</p>';
 }
 
-function buildTaskMap(tasks) {
-  const map = {};
-  tasks.forEach((task) => {
-    map[task.id] = task;
-  });
-  return map;
-}
+async function renderSelectedTaskPanel() {
+  const panel = document.getElementById('selectedTaskPanel');
+  if (!panel) return;
 
-function plannerItemCard(item, task) {
-  return `
-    <article class="planner-item-card">
-      <div class="planner-item-top">
-        <strong>${escapeHtml(item.timeBlock)}</strong>
-        <div class="actions">
-          <button
-            class="button small primary"
-            data-action="start-study"
-            data-task-id="${item.taskId}"
-          >
-            Start
-          </button>
-          <button
-            class="button small danger"
-            data-action="delete-planner-item"
-            data-id="${item.id}"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
+  const tasks = await getAllTasks();
+  const task = tasks.find((item) => item.id === selectedTaskId);
 
-      <p><strong>${escapeHtml(task ? task.title : 'Unknown task')}</strong></p>
-      <p class="muted">${escapeHtml(task ? task.subject : 'No subject')}</p>
-      ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
-    </article>
-  `;
+  panel.innerHTML = selectedTaskCard(task);
 }
 
 async function renderPlannerWeek() {
@@ -147,26 +160,30 @@ async function renderPlannerWeek() {
   });
 }
 
-async function handlePlannerFormSubmit(event) {
-  event.preventDefault();
+async function quickPlanToDay(day) {
+  if (!selectedTaskId) {
+    alert('Select a task first.');
+    return;
+  }
 
-  const form = event.target;
-  const formData = new FormData(form);
+  const tasks = await getAllTasks();
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+
+  if (!selectedTask) {
+    alert('Selected task not found.');
+    return;
+  }
 
   const item = {
     id: generatePlannerId(),
-    taskId: formData.get('plannedTaskId'),
-    day: formData.get('plannedDay'),
-    timeBlock: formData.get('plannedTime'),
-    notes: formData.get('plannerNotes'),
+    taskId: selectedTask.id,
+    day,
+    timeBlock: 'Homework block',
+    notes: '',
     createdAt: new Date().toISOString()
   };
 
   await addPlannerItem(item);
-  form.reset();
-
-  await populatePlannerTaskDropdown();
-  await renderPlannerTaskList();
   await renderPlannerWeek();
 }
 
@@ -174,28 +191,56 @@ async function handlePlannerActions(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
 
-  if (button.dataset.action === 'delete-planner-item') {
+  const action = button.dataset.action;
+
+  if (action === 'select-task') {
+    selectedTaskId = button.dataset.taskId;
+    await renderPlannerTaskList();
+    await renderSelectedTaskPanel();
+    return;
+  }
+
+  if (action === 'quick-add-day') {
+    await quickPlanToDay(button.dataset.day);
+    return;
+  }
+
+  if (action === 'delete-planner-item') {
     await deletePlannerItem(button.dataset.id);
     await renderPlannerWeek();
     return;
   }
 
-  if (button.dataset.action === 'start-study') {
+  if (action === 'start-study') {
     const taskId = button.dataset.taskId;
     window.location.href = `/study?taskId=${taskId}`;
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const plannerForm = document.getElementById('plannerForm');
+async function handleDayCardClick(event) {
+  const card = event.target.closest('[data-day-card]');
+  if (!card) return;
 
-  if (plannerForm) {
-    plannerForm.addEventListener('submit', handlePlannerFormSubmit);
+  if (
+    event.target.closest('button') ||
+    event.target.closest('.planner-item-card')
+  ) {
+    return;
   }
 
+  const day = card.dataset.dayCard;
+  await quickPlanToDay(day);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   document.body.addEventListener('click', handlePlannerActions);
 
-  await populatePlannerTaskDropdown();
+  const plannerGrid = document.getElementById('plannerWeekGrid');
+  if (plannerGrid) {
+    plannerGrid.addEventListener('click', handleDayCardClick);
+  }
+
   await renderPlannerTaskList();
+  await renderSelectedTaskPanel();
   await renderPlannerWeek();
 });

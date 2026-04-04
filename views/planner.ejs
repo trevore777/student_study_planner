@@ -1,64 +1,53 @@
 <section class="page-header">
   <div>
     <h1>Weekly Planner</h1>
-    <p class="lede">Turn homework into realistic study blocks across the week.</p>
+    <p class="lede">Tap a task, then tap a day to plan it quickly.</p>
   </div>
 </section>
 
-<section class="grid dashboard-grid">
-  <article class="card">
-    <h2>Add study block</h2>
+<section class="planner-layout">
+  <aside class="card planner-left">
+    <div class="section-heading">
+      <h2>Open homework</h2>
+    </div>
+    <p class="muted">Tap a task, then tap a day in the week planner.</p>
+    <div id="plannerTaskList" class="task-list empty-state">
+      <p>No open tasks to plan yet.</p>
+    </div>
+  </aside>
 
-    <form id="plannerForm" class="stack-form">
-      <div class="field">
-        <label for="plannedTaskId">Task</label>
-        <select id="plannedTaskId" name="plannedTaskId" required>
-          <option value="">Select a task</option>
-        </select>
+  <main class="planner-center">
+    <section class="card planner-selected-task">
+      <h2>Selected task</h2>
+      <div id="selectedTaskPanel" class="muted">
+        No task selected. Tap a homework task to begin planning.
       </div>
+    </section>
 
-      <div class="field">
-        <label for="plannedDay">Day</label>
-        <select id="plannedDay" name="plannedDay" required>
-          <option value="">Select day</option>
-          <option value="Monday">Monday</option>
-          <option value="Tuesday">Tuesday</option>
-          <option value="Wednesday">Wednesday</option>
-          <option value="Thursday">Thursday</option>
-          <option value="Friday">Friday</option>
-          <option value="Saturday">Saturday</option>
-          <option value="Sunday">Sunday</option>
-        </select>
-      </div>
+    <section class="planner-grid" id="plannerWeekGrid">
+      <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
+        <section class="card planner-day" data-day-card="<%= day %>">
+          <div class="planner-day-header">
+            <h3><%= day %></h3>
+            <button
+              class="button small"
+              type="button"
+              data-action="quick-add-day"
+              data-day="<%= day %>"
+            >
+              Add selected
+            </button>
+          </div>
 
-      <div class="field">
-        <label for="plannedTime">Time block</label>
-        <select id="plannedTime" name="plannedTime" required>
-          <option value="">Select time block</option>
-          <option value="After school">After school</option>
-          <option value="Homework block">Homework block</option>
-          <option value="Revision block">Revision block</option>
-          <option value="Evening catch-up">Evening catch-up</option>
-        </select>
-      </div>
+          <div class="planner-day-list task-list" data-day="<%= day %>">
+            <p>No study blocks planned.</p>
+          </div>
+        </section>
+      <% }) %>
+    </section>
+  </main>
 
-      <div class="field">
-        <label for="plannerNotes">Notes</label>
-        <textarea
-          id="plannerNotes"
-          name="plannerNotes"
-          rows="4"
-          placeholder="e.g. Finish paragraph, revise key terms, check worksheet"
-        ></textarea>
-      </div>
-
-      <div class="actions">
-        <button class="button primary" type="submit">Save study block</button>
-      </div>
-    </form>
-  </article>
-
-  <article class="card">
+  <aside class="card planner-right">
     <h2>Planning reminders</h2>
     <ul class="tight-list">
       <li>Plan overdue tasks first</li>
@@ -66,27 +55,14 @@
       <li>Leave shorter review blocks before assessments</li>
       <li>Do not overload one night</li>
     </ul>
-  </article>
-</section>
 
-<section class="card">
-  <div class="section-heading">
-    <h2>Open homework tasks</h2>
-  </div>
-  <div id="plannerTaskList" class="task-list empty-state">
-    <p>No open tasks to plan yet.</p>
-  </div>
-</section>
-
-<section class="planner-grid" id="plannerWeekGrid">
-  <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
-    <section class="card planner-day">
-      <h3><%= day %></h3>
-      <div class="planner-day-list task-list" data-day="<%= day %>">
-        <p>No study blocks planned.</p>
-      </div>
-    </section>
-  <% }) %>
+    <div class="card" style="margin-top: 1rem;">
+      <h3>Quick tip</h3>
+      <p class="muted">
+        A short study block completed is better than a long study block delayed.
+      </p>
+    </div>
+  </aside>
 </section>
 
 <script src="/client/db.js"></script>
