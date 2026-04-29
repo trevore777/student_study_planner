@@ -35,6 +35,9 @@
   <div class="actions">
     <a class="button primary" href="/teacher/homework/new">Post new homework</a>
     <a class="button" href="/teacher/summary">View class summary</a>
+    <% if (teacherAuth && teacherAuth.role === "admin") { %>
+  <p><a href="/teacher/add">Add New Teacher</a></p>
+<% } %>
   </div>
 </section>
 

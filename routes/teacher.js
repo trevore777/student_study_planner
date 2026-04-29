@@ -1,295 +1,188 @@
-const express = require('express');
+import express from "express";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { db } from "../lib/db.js";
+
 const router = express.Router();
-const db = require('../lib/turso');
-const ensureSchema = require('../lib/ensureSchema');
-const requireTeacherAuth = require('../middleware/requireTeacherAuth');
 
-const DEFAULT_SCHOOL_ID = 'school-001';
-const DEFAULT_TEACHER_ID = 'teacher-001';
-const DEFAULT_CLASS_ID = 'class-001';
-
-router.get('/login', (req, res) => {
-  if (req.signedCookies?.teacher_auth === 'yes') {
-    return res.redirect('/teacher/dashboard');
-  }
-
-  res.render('teacher-login', {
-    title: 'Teacher Login',
-    error: null
+router.get("/login", (req, res) => {
+  res.render("teacher-login", {
+    error: null,
+    success: null
   });
 });
 
-router.post('/login', (req, res) => {
-  const username = String(req.body.username || '').trim();
-  const password = String(req.body.password || '');
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  const expectedUsername = String(process.env.TEACHER_USERNAME || 'teacher').trim();
-  const expectedPassword = String(process.env.TEACHER_PASSWORD || 'ChangeThisNow123!');
-
-  if (username === expectedUsername && password === expectedPassword) {
-    res.cookie('teacher_auth', 'yes', {
-      signed: true,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 8,
-      path: '/'
+    const result = await db.execute({
+      sql: `
+        SELECT id, school_id, name, email, password_hash, role
+        FROM teachers
+        WHERE email = ?
+        LIMIT 1
+      `,
+      args: [email]
     });
 
-    return res.redirect('/teacher/dashboard');
-  }
+    const teacher = result.rows[0];
 
-  return res.status(401).render('teacher-login', {
-    title: 'Teacher Login',
-    error: 'Incorrect username or password.'
-  });
-});
-
-router.post('/logout', (req, res) => {
-  res.clearCookie('teacher_auth', {
-    path: '/'
-  });
-  res.redirect('/teacher/login');
-});
-
-router.get('/dashboard', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
-  try {
-    await ensureSchema();
-
-    const homeworkResult = await db.execute(`
-      SELECT
-        th.id,
-        th.school_id,
-        th.teacher_id,
-        th.class_id,
-        th.class_name,
-        th.subject,
-        th.title,
-        th.description,
-        th.due_date,
-        th.estimated_minutes,
-        th.created_at,
-        s.name AS school_name,
-        t.name AS teacher_name,
-        c.name AS linked_class_name
-      FROM teacher_homework th
-      LEFT JOIN schools s ON s.id = th.school_id
-      LEFT JOIN teachers t ON t.id = th.teacher_id
-      LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY th.created_at DESC
-    `);
-
-    const claimsResult = await db.execute(`
-      SELECT
-        id,
-        school_id,
-        student_name,
-        year_level,
-        challenge_days,
-        claimed_at,
-        status
-      FROM credit_claims
-      ORDER BY claimed_at DESC
-    `);
-
-    res.render('teacher-dashboard', {
-      title: 'Teacher Dashboard',
-      homeworkItems: homeworkResult.rows || [],
-      creditClaims: claimsResult.rows || []
-    });
-  } catch (error) {
-    console.error('Error loading teacher dashboard:', error);
-    res.status(500).send(`Unable to load teacher dashboard. ${error.message}`);
-  }
-});
-
-router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    await db.execute({
-      sql: `UPDATE credit_claims SET status = 'approved' WHERE id = ?`,
-      args: [req.params.id]
-    });
-
-    res.redirect('/teacher/dashboard');
-  } catch (error) {
-    console.error('Error approving Kings Credit claim:', error);
-    res.status(500).send(`Unable to approve claim. ${error.message}`);
-  }
-});
-
-router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    await db.execute({
-      sql: `UPDATE credit_claims SET status = 'rejected' WHERE id = ?`,
-      args: [req.params.id]
-    });
-
-    res.redirect('/teacher/dashboard');
-  } catch (error) {
-    console.error('Error rejecting Kings Credit claim:', error);
-    res.status(500).send(`Unable to reject claim. ${error.message}`);
-  }
-});
-
-router.get('/homework/new', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    const schoolsResult = await db.execute(`
-      SELECT id, name, short_code
-      FROM schools
-      ORDER BY name ASC
-    `);
-
-    const teachersResult = await db.execute(`
-      SELECT id, school_id, name, email
-      FROM teachers
-      ORDER BY name ASC
-    `);
-
-    const classesResult = await db.execute(`
-      SELECT id, school_id, teacher_id, name, year_level
-      FROM classes
-      ORDER BY name ASC
-    `);
-
-    res.render('teacher-homework-new', {
-      title: 'Post Homework',
-      schools: schoolsResult.rows || [],
-      teachers: teachersResult.rows || [],
-      classes: classesResult.rows || [],
-      defaults: {
-        schoolId: DEFAULT_SCHOOL_ID,
-        teacherId: DEFAULT_TEACHER_ID,
-        classId: DEFAULT_CLASS_ID
-      }
-    });
-  } catch (error) {
-    console.error('Error loading teacher homework form:', error);
-    res.status(500).send(`Unable to load homework form. ${error.message}`);
-  }
-});
-
-router.post('/homework/new', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    const schoolId = (req.body.schoolId || DEFAULT_SCHOOL_ID).trim();
-    const teacherId = (req.body.teacherId || DEFAULT_TEACHER_ID).trim();
-    const classId = (req.body.classId || DEFAULT_CLASS_ID).trim();
-    const subject = (req.body.subject || '').trim();
-    const title = (req.body.title || '').trim();
-    const description = (req.body.description || '').trim();
-    const dueDate = (req.body.dueDate || '').trim();
-    const estimatedMinutes = Number(req.body.estimatedMinutes) || 20;
-
-    if (!schoolId || !teacherId || !classId || !subject || !title || !description || !dueDate) {
-      return res.status(400).send('Missing required homework fields.');
+    if (!teacher) {
+      return res.status(401).render("teacher-login", {
+        error: "Invalid email or password.",
+        success: null
+      });
     }
 
-    const classLookup = await db.execute({
-      sql: `SELECT id, name FROM classes WHERE id = ? LIMIT 1`,
-      args: [classId]
+    const passwordOk = await bcrypt.compare(password, teacher.password_hash);
+
+    if (!passwordOk) {
+      return res.status(401).render("teacher-login", {
+        error: "Invalid email or password.",
+        success: null
+      });
+    }
+
+    res.cookie("teacher_auth", {
+      teacherId: teacher.id,
+      schoolId: teacher.school_id,
+      role: teacher.role || "teacher"
+    }, {
+      signed: true,
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7
     });
 
-    const selectedClass = (classLookup.rows || [])[0];
-    const className = selectedClass?.name || 'Unknown Class';
+    return res.redirect("/teacher/dashboard");
 
-    const newItem = {
-      id: `hw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      schoolId,
-      teacherId,
-      classId,
-      className,
-      subject,
-      title,
-      description,
-      dueDate,
-      estimatedMinutes,
-      createdAt: new Date().toISOString()
-    };
+  } catch (err) {
+    console.error("Teacher login error:", err);
+
+    return res.status(500).render("teacher-login", {
+      error: "Login failed. Please try again.",
+      success: null
+    });
+  }
+});
+
+router.get("/add", requireTeacherAuth, async (req, res) => {
+  if (req.teacherAuth.role !== "admin") {
+    return res.status(403).send("Only admins can add teachers.");
+  }
+
+  res.render("add-teacher", {
+    error: null,
+    success: null
+  });
+});
+
+router.post("/add", requireTeacherAuth, async (req, res) => {
+  try {
+    if (req.teacherAuth.role !== "admin") {
+      return res.status(403).send("Only admins can add teachers.");
+    }
+
+    const { name, email, password, role } = req.body;
+
+    const passwordHash = await bcrypt.hash(password, 10);
 
     await db.execute({
       sql: `
-        INSERT INTO teacher_homework (
+        INSERT INTO teachers (
           id,
           school_id,
-          teacher_id,
-          class_id,
-          class_name,
-          subject,
-          title,
-          description,
-          due_date,
-          estimated_minutes,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          name,
+          email,
+          password_hash,
+          role
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
       `,
       args: [
-        newItem.id,
-        newItem.schoolId,
-        newItem.teacherId,
-        newItem.classId,
-        newItem.className,
-        newItem.subject,
-        newItem.title,
-        newItem.description,
-        newItem.dueDate,
-        newItem.estimatedMinutes,
-        newItem.createdAt
+        crypto.randomUUID(),
+        req.teacherAuth.schoolId,
+        name,
+        email,
+        passwordHash,
+        role || "teacher"
       ]
     });
 
-    res.redirect('/teacher/dashboard');
-  } catch (error) {
-    console.error('Error creating teacher homework:', error);
-    res.status(500).send(`Unable to save homework. ${error.message}`);
-  }
-});
-
-router.get('/summary', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    const result = await db.execute(`
-      SELECT
-        th.id,
-        th.school_id,
-        th.teacher_id,
-        th.class_id,
-        th.class_name,
-        th.subject,
-        th.title,
-        th.description,
-        th.due_date,
-        th.estimated_minutes,
-        th.created_at,
-        s.name AS school_name,
-        t.name AS teacher_name,
-        c.name AS linked_class_name
-      FROM teacher_homework th
-      LEFT JOIN schools s ON s.id = th.school_id
-      LEFT JOIN teachers t ON t.id = th.teacher_id
-      LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY s.name ASC, th.class_name ASC, th.due_date ASC
-    `);
-
-    res.render('teacher-summary', {
-      title: 'Class Summary',
-      homeworkItems: result.rows || []
+    res.render("add-teacher", {
+      error: null,
+      success: "Teacher added successfully."
     });
-  } catch (error) {
-    console.error('Error loading teacher summary:', error);
-    res.status(500).send(`Unable to load class summary. ${error.message}`);
+
+  } catch (err) {
+    console.error("Add teacher error:", err);
+
+    res.status(500).render("add-teacher", {
+      error: "Could not add teacher. The email may already exist.",
+      success: null
+    });
   }
 });
 
-module.exports = router;
+router.post("/reset-request", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const result = await db.execute({
+      sql: `
+        SELECT id, email
+        FROM teachers
+        WHERE email = ?
+        LIMIT 1
+      `,
+      args: [email]
+    });
+
+    const teacher = result.rows[0];
+
+    if (teacher) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 30).toISOString();
+
+      await db.execute({
+        sql: `
+          INSERT INTO password_resets 
+          (id, teacher_id, token, expires_at, used)
+          VALUES (?, ?, ?, ?, 0)
+        `,
+        args: [
+          crypto.randomUUID(),
+          teacher.id,
+          token,
+          expiresAt
+        ]
+      });
+
+      const resetLink = `${process.env.APP_URL || "http://localhost:3000"}/teacher/reset-password?token=${token}`;
+
+      console.log("PASSWORD RESET LINK:", resetLink);
+
+      /*
+        Later, connect this to Resend, SendGrid, Mailgun, etc.
+        For now, the reset link appears in your Render/Vercel logs.
+      */
+    }
+
+    return res.render("teacher-login", {
+      error: null,
+      success: "If that email exists, a reset link has been created."
+    });
+
+  } catch (err) {
+    console.error("Password reset request error:", err);
+
+    return res.status(500).render("teacher-login", {
+      error: "Password reset failed. Please try again.",
+      success: null
+    });
+  }
+});
+
+export default router;
