@@ -1,0 +1,29 @@
+<h1>Admin Dashboard</h1>
+
+<form method="POST" action="/admin/logout">
+  <button type="submit">Logout</button>
+</form>
+
+<p>
+  <a href="/admin/teachers/new">Add New Teacher</a>
+</p>
+
+<h2>Teachers</h2>
+
+<table border="1" cellpadding="8">
+  <tr>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Role</th>
+    <th>Created</th>
+  </tr>
+
+  <% teachers.forEach((teacher) => { %>
+    <tr>
+      <td><%= teacher.name %></td>
+      <td><%= teacher.email %></td>
+      <td><%= teacher.role %></td>
+      <td><%= teacher.created_at %></td>
+    </tr>
+  <% }) %>
+</table>

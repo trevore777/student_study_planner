@@ -1,7 +1,7 @@
 <section class="page-header">
   <div>
-    <h1>Weekly Planner</h1>
-    <p class="lede">Tap a task, then tap a day to plan it quickly.</p>
+    <h1>Two-Week Planner</h1>
+    <p class="lede">Plan homework for this week and next week. Use multi-day planning for big tasks or memorisation.</p>
   </div>
 </section>
 
@@ -10,7 +10,7 @@
     <div class="section-heading">
       <h2>Open homework</h2>
     </div>
-    <p class="muted">Tap a task, then tap a day in the week planner.</p>
+    <p class="muted">Select a task, then choose single-day or multi-day planning.</p>
     <div id="plannerTaskList" class="task-list empty-state">
       <p>No open tasks to plan yet.</p>
     </div>
@@ -22,27 +22,87 @@
       <div id="selectedTaskPanel" class="muted">
         No task selected. Tap a homework task to begin planning.
       </div>
+
+      <hr>
+
+      <h3>Planning options</h3>
+
+      <label>
+        Schedule type
+        <select id="scheduleType">
+          <option value="single">Single day</option>
+          <option value="multi">Spread over multiple days</option>
+        </select>
+      </label>
+
+      <label>
+        Study type
+        <select id="studyType">
+          <option value="homework">Homework</option>
+          <option value="revision">Revision</option>
+          <option value="memorisation">Memorisation</option>
+          <option value="assignment">Assignment / big task</option>
+          <option value="reading">Reading</option>
+          <option value="exam-prep">Exam preparation</option>
+        </select>
+      </label>
+
+      <label>
+        Minutes per day
+        <input id="dailyMinutes" type="number" min="5" value="20">
+      </label>
+
+      <div id="multiDayOptions" style="display:none;">
+        <label>
+          Start date
+          <input id="multiStartDate" type="date">
+        </label>
+
+        <label>
+          End date
+          <input id="multiEndDate" type="date">
+        </label>
+
+        <button class="button primary" type="button" id="addMultiDayTask">
+          Add across multiple days
+        </button>
+      </div>
     </section>
 
-    <section class="planner-grid" id="plannerWeekGrid">
+    <h2>This Week</h2>
+    <section class="planner-grid" id="plannerWeekGridThis">
       <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
-        <section class="card planner-day" data-day-card="<%= day %>">
+        <section class="card planner-day" data-day-card="<%= day %>" data-week-offset="0">
           <div class="planner-day-header">
             <div>
               <h3><%= day %></h3>
-              <p class="muted planner-day-date" data-day-date="<%= day %>"></p>
+              <p class="muted planner-day-date" data-day-date="<%= day %>" data-week-offset="0"></p>
             </div>
-            <button
-              class="button small"
-              type="button"
-              data-action="quick-add-day"
-              data-day="<%= day %>"
-            >
+            <button class="button small" type="button" data-action="quick-add-day" data-day="<%= day %>" data-week-offset="0">
               Add selected
             </button>
           </div>
+          <div class="planner-day-list task-list" data-day="<%= day %>" data-week-offset="0">
+            <p>No study blocks planned.</p>
+          </div>
+        </section>
+      <% }) %>
+    </section>
 
-          <div class="planner-day-list task-list" data-day="<%= day %>">
+    <h2 style="margin-top:2rem;">Next Week</h2>
+    <section class="planner-grid" id="plannerWeekGridNext">
+      <% ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(day => { %>
+        <section class="card planner-day" data-day-card="<%= day %>" data-week-offset="1">
+          <div class="planner-day-header">
+            <div>
+              <h3><%= day %></h3>
+              <p class="muted planner-day-date" data-day-date="<%= day %>" data-week-offset="1"></p>
+            </div>
+            <button class="button small" type="button" data-action="quick-add-day" data-day="<%= day %>" data-week-offset="1">
+              Add selected
+            </button>
+          </div>
+          <div class="planner-day-list task-list" data-day="<%= day %>" data-week-offset="1">
             <p>No study blocks planned.</p>
           </div>
         </section>
@@ -54,17 +114,11 @@
     <h2>Planning reminders</h2>
     <ul class="tight-list">
       <li>Plan overdue tasks first</li>
-      <li>Put harder work earlier in the week</li>
-      <li>Leave shorter review blocks before assessments</li>
+      <li>Spread big tasks over several days</li>
+      <li>Memorisation works better with short daily practice</li>
+      <li>Leave review blocks before assessments</li>
       <li>Do not overload one night</li>
     </ul>
-
-    <div class="card" style="margin-top: 1rem;">
-      <h3>Quick tip</h3>
-      <p class="muted">
-        A short study block completed is better than a long study block delayed.
-      </p>
-    </div>
   </aside>
 </section>
 

@@ -25,10 +25,8 @@ function escapeHtml(value) {
 
 function formatDateAU(value) {
   if (!value) return '';
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-
   return date.toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'long',
@@ -36,8 +34,12 @@ function formatDateAU(value) {
   });
 }
 
+function toISODate(date) {
+  return date.toISOString().split('T')[0];
+}
+
 function todayISO() {
-  return new Date().toISOString().split('T')[0];
+  return toISODate(new Date());
 }
 
 function isOverdue(task) {
@@ -56,27 +58,36 @@ function getStartOfCurrentWeekMonday() {
   return monday;
 }
 
-function getWeekDatesMap() {
+function getWeekDatesMap(weekOffset = 0) {
   const monday = getStartOfCurrentWeekMonday();
+  monday.setDate(monday.getDate() + weekOffset * 7);
+
   const map = {};
 
   WEEK_DAYS.forEach((dayName, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     date.setHours(0, 0, 0, 0);
+
     map[dayName] = date;
   });
 
   return map;
 }
 
-function renderPlannerDayDates() {
-  const weekDates = getWeekDatesMap();
+function getDateForDay(day, weekOffset = 0) {
+  const map = getWeekDatesMap(Number(weekOffset) || 0);
+  return map[day];
+}
 
-  WEEK_DAYS.forEach((dayName) => {
-    const el = document.querySelector(`[data-day-date="${dayName}"]`);
-    if (!el) return;
-    el.textContent = formatDateAU(weekDates[dayName]);
+function renderPlannerDayDates() {
+  [0, 1].forEach((weekOffset) => {
+    WEEK_DAYS.forEach((dayName) => {
+      const el = document.querySelector(`[data-day-date="${dayName}"][data-week-offset="${weekOffset}"]`);
+      if (!el) return;
+
+      el.textContent = formatDateAU(getDateForDay(dayName, weekOffset));
+    });
   });
 }
 
@@ -150,33 +161,65 @@ function selectedTaskCard(task) {
   `;
 }
 
+function getStrategyNote(studyType, dayNumber, totalDays) {
+  if (studyType === 'memorisation') {
+    const steps = [
+      'Read and understand',
+      'Cover and recall',
+      'Practise from memory',
+      'Check and fix mistakes',
+      'Final recall test'
+    ];
+    return steps[Math.min(dayNumber - 1, steps.length - 1)];
+  }
+
+  if (studyType === 'assignment') {
+    const steps = [
+      'Understand the task',
+      'Research and gather notes',
+      'Draft the main sections',
+      'Improve and edit',
+      'Final check and submit'
+    ];
+    return steps[Math.min(dayNumber - 1, steps.length - 1)];
+  }
+
+  if (studyType === 'exam-prep') {
+    return `Revision block ${dayNumber} of ${totalDays}: practise, check mistakes, and revise weak areas.`;
+  }
+
+  if (studyType === 'reading') {
+    return `Reading block ${dayNumber} of ${totalDays}: read, summarise, and note key ideas.`;
+  }
+
+  if (studyType === 'revision') {
+    return `Revision block ${dayNumber} of ${totalDays}: review notes and answer practice questions.`;
+  }
+
+  return `Study block ${dayNumber} of ${totalDays}.`;
+}
+
 function plannerItemCard(item, task) {
+  const weekLabel = item.weekOffset === 1 ? 'Next week' : 'This week';
+  const strategy = item.studyType ? `<span class="badge">${escapeHtml(item.studyType)}</span>` : '';
+
   return `
     <article class="planner-item-card">
       <div class="planner-item-top">
-        <strong>${escapeHtml(item.timeBlock)}</strong>
+        <strong>${escapeHtml(item.timeBlock || 'Study block')}</strong>
         <div class="actions">
-          <button
-            class="button small primary"
-            data-action="start-study"
-            data-task-id="${item.taskId}"
-            type="button"
-          >
+          <button class="button small primary" data-action="start-study" data-task-id="${item.taskId}" type="button">
             Start
           </button>
-          <button
-            class="button small danger"
-            data-action="delete-planner-item"
-            data-id="${item.id}"
-            type="button"
-          >
+          <button class="button small danger" data-action="delete-planner-item" data-id="${item.id}" type="button">
             Delete
           </button>
         </div>
       </div>
 
       <p><strong>${escapeHtml(task ? task.title : 'Unknown task')}</strong></p>
-      <p class="muted">${escapeHtml(task ? task.subject : 'No subject')}</p>
+      <p class="muted">${escapeHtml(task ? task.subject : 'No subject')} — ${weekLabel}</p>
+      ${strategy}
       ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
     </article>
   `;
@@ -244,19 +287,24 @@ async function renderPlannerWeek() {
   const [items, tasks] = await Promise.all([getAllPlannerItems(), getAllTasks()]);
   const taskMap = buildTaskMap(tasks);
 
-  WEEK_DAYS.forEach((day) => {
-    const container = document.querySelector(`.planner-day-list[data-day="${day}"]`);
-    if (!container) return;
+  [0, 1].forEach((weekOffset) => {
+    WEEK_DAYS.forEach((day) => {
+      const container = document.querySelector(`.planner-day-list[data-day="${day}"][data-week-offset="${weekOffset}"]`);
+      if (!container) return;
 
-    const dayItems = items.filter((item) => item.day === day);
+      const dayItems = items.filter((item) => {
+        const itemWeekOffset = Number(item.weekOffset || 0);
+        return item.day === day && itemWeekOffset === weekOffset;
+      });
 
-    container.innerHTML = dayItems.length
-      ? dayItems.map((item) => plannerItemCard(item, taskMap[item.taskId])).join('')
-      : '<p>No study blocks planned.</p>';
+      container.innerHTML = dayItems.length
+        ? dayItems.map((item) => plannerItemCard(item, taskMap[item.taskId])).join('')
+        : '<p>No study blocks planned.</p>';
+    });
   });
 }
 
-async function quickPlanToDay(day) {
+async function quickPlanToDay(day, weekOffset = 0) {
   if (!selectedTaskId) {
     alert('Select a task first.');
     return;
@@ -270,8 +318,7 @@ async function quickPlanToDay(day) {
     return;
   }
 
-  const weekDates = getWeekDatesMap();
-  const plannedDate = weekDates[day];
+  const plannedDate = getDateForDay(day, Number(weekOffset) || 0);
   const planningMessage = getPlanningDateMessage(selectedTask, plannedDate);
 
   if (planningMessage?.type === 'blocked') {
@@ -284,16 +331,129 @@ async function quickPlanToDay(day) {
     if (!proceed) return;
   }
 
+  const studyType = document.getElementById('studyType')?.value || 'homework';
+  const dailyMinutes = Number(document.getElementById('dailyMinutes')?.value) || selectedTask.estimatedMinutes || 20;
+
   const item = {
     id: generatePlannerId(),
     taskId: selectedTask.id,
     day,
-    timeBlock: 'Homework block',
-    notes: '',
+    weekOffset: Number(weekOffset) || 0,
+    plannedDate: toISODate(plannedDate),
+    timeBlock: `${dailyMinutes} min ${studyType}`,
+    studyType,
+    notes: getStrategyNote(studyType, 1, 1),
     createdAt: new Date().toISOString()
   };
 
   await addPlannerItem(item);
+  await renderPlannerWeek();
+}
+
+function getDatesBetween(startDateValue, endDateValue) {
+  const start = new Date(startDateValue);
+  const end = new Date(endDateValue);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return [];
+  }
+
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (start > end) return [];
+
+  const dates = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end) {
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function getPlannerPositionForDate(date) {
+  const monday = getStartOfCurrentWeekMonday();
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+
+  const diffMs = target.getTime() - monday.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0 || diffDays > 13) {
+    return null;
+  }
+
+  const weekOffset = diffDays >= 7 ? 1 : 0;
+  const dayIndex = diffDays % 7;
+
+  return {
+    weekOffset,
+    day: WEEK_DAYS[dayIndex]
+  };
+}
+
+async function addMultiDayTask() {
+  if (!selectedTaskId) {
+    alert('Select a task first.');
+    return;
+  }
+
+  const tasks = await getAllTasks();
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+
+  if (!selectedTask) {
+    alert('Selected task not found.');
+    return;
+  }
+
+  const startDate = document.getElementById('multiStartDate')?.value;
+  const endDate = document.getElementById('multiEndDate')?.value;
+  const studyType = document.getElementById('studyType')?.value || 'revision';
+  const dailyMinutes = Number(document.getElementById('dailyMinutes')?.value) || 20;
+
+  const dates = getDatesBetween(startDate, endDate);
+
+  if (!dates.length) {
+    alert('Choose a valid start and end date.');
+    return;
+  }
+
+  const validDates = dates
+    .map((date) => ({
+      date,
+      position: getPlannerPositionForDate(date)
+    }))
+    .filter((entry) => entry.position);
+
+  if (!validDates.length) {
+    alert('The selected dates must be inside this week or next week.');
+    return;
+  }
+
+  for (let index = 0; index < validDates.length; index += 1) {
+    const entry = validDates[index];
+    const planningMessage = getPlanningDateMessage(selectedTask, entry.date);
+
+    if (planningMessage?.type === 'blocked') {
+      continue;
+    }
+
+    await addPlannerItem({
+      id: generatePlannerId(),
+      taskId: selectedTask.id,
+      day: entry.position.day,
+      weekOffset: entry.position.weekOffset,
+      plannedDate: toISODate(entry.date),
+      timeBlock: `${dailyMinutes} min ${studyType}`,
+      studyType,
+      notes: getStrategyNote(studyType, index + 1, validDates.length),
+      createdAt: new Date().toISOString()
+    });
+  }
+
   await renderPlannerWeek();
 }
 
@@ -311,7 +471,7 @@ async function handlePlannerActions(event) {
   }
 
   if (action === 'quick-add-day') {
-    await quickPlanToDay(button.dataset.day);
+    await quickPlanToDay(button.dataset.day, button.dataset.weekOffset || 0);
     return;
   }
 
@@ -339,18 +499,47 @@ async function handleDayCardClick(event) {
   }
 
   const day = card.dataset.dayCard;
-  await quickPlanToDay(day);
+  const weekOffset = card.dataset.weekOffset || 0;
+
+  await quickPlanToDay(day, weekOffset);
+}
+
+function handleScheduleTypeChange() {
+  const scheduleType = document.getElementById('scheduleType')?.value;
+  const multiBox = document.getElementById('multiDayOptions');
+
+  if (!multiBox) return;
+
+  multiBox.style.display = scheduleType === 'multi' ? 'block' : 'none';
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.body.addEventListener('click', handlePlannerActions);
 
-  const plannerGrid = document.getElementById('plannerWeekGrid');
-  if (plannerGrid) {
-    plannerGrid.addEventListener('click', handleDayCardClick);
+  const thisWeekGrid = document.getElementById('plannerWeekGridThis');
+  const nextWeekGrid = document.getElementById('plannerWeekGridNext');
+
+  if (thisWeekGrid) {
+    thisWeekGrid.addEventListener('click', handleDayCardClick);
+  }
+
+  if (nextWeekGrid) {
+    nextWeekGrid.addEventListener('click', handleDayCardClick);
+  }
+
+  const scheduleType = document.getElementById('scheduleType');
+  if (scheduleType) {
+    scheduleType.addEventListener('change', handleScheduleTypeChange);
+  }
+
+  const addMultiButton = document.getElementById('addMultiDayTask');
+  if (addMultiButton) {
+    addMultiButton.addEventListener('click', addMultiDayTask);
   }
 
   renderPlannerDayDates();
+  handleScheduleTypeChange();
+
   await renderPlannerTaskList();
   await renderSelectedTaskPanel();
   await renderPlannerWeek();

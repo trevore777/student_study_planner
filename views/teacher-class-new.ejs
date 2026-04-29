@@ -1,0 +1,17 @@
+<h1>Add Class</h1>
+
+<% if (error) { %>
+  <p style="color:red;"><%= error %></p>
+<% } %>
+
+<form method="POST" action="/teacher/classes/new">
+  <label>Class Name</label><br>
+  <input type="text" name="name" placeholder="Year 8A Digital Technologies" required><br><br>
+
+  <label>Year Level</label><br>
+  <input type="text" name="yearLevel" placeholder="8" required><br><br>
+
+  <button type="submit">Add Class</button>
+</form>
+
+<p><a href="/teacher/dashboard">Back to Dashboard</a></p>

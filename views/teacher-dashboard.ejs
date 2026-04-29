@@ -1,129 +1,96 @@
-<%
-  function formatDateAU(value) {
-    if (!value) return 'No date';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString('en-AU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  }
+<h1>Teacher Dashboard</h1>
 
-  function formatDateTimeAU(value) {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString('en-AU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  }
-%>
+<p>Logged in as: <strong><%= teacher.name %></strong></p>
 
-<section class="page-header">
-  <div>
-    <h1>Teacher Dashboard</h1>
-    <p class="lede">Manage homework and review Kings Credit challenge claims.</p>
-  </div>
-</section>
+<form method="POST" action="/teacher/logout">
+  <button type="submit">Logout</button>
+</form>
 
-<section class="card">
-  <div class="actions">
-    <a class="button primary" href="/teacher/homework/new">Post new homework</a>
-    <a class="button" href="/teacher/summary">View class summary</a>
-  </div>
-</section>
+<p>
+  <a href="/teacher/classes/new">Add Class</a> |
+  <a href="/teacher/homework/new">Post Homework</a>
+</p>
 
-<section class="card">
-  <div class="section-heading">
-    <h2>Kings Credit claims</h2>
-  </div>
+<h2>My Classes</h2>
 
-  <% if (!creditClaims || !creditClaims.length) { %>
-    <p>No Kings Credit claims yet.</p>
-  <% } else { %>
-    <div class="task-list">
-      <% creditClaims.forEach(item => { %>
-        <article class="task-card">
-          <div class="task-top">
-            <div>
-              <h3><%= item.student_name %></h3>
-              <p class="muted">
-                <%= item.year_level ? `Year ${item.year_level}` : 'Year level not set' %>
-              </p>
-            </div>
-            <div class="task-badges">
-              <span class="badge"><%= item.challenge_days %> / 21 days</span>
-              <span class="badge <%= item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : '' %>">
-                <%= item.status %>
-              </span>
-            </div>
-          </div>
+<% if (!classes.length) { %>
+  <p>No classes yet.</p>
+<% } else { %>
+  <table border="1" cellpadding="8">
+    <tr>
+      <th>Class</th>
+      <th>Year Level</th>
+      <th>Created</th>
+    </tr>
 
-          <p class="muted"><strong>Claimed:</strong> <%= formatDateTimeAU(item.claimed_at) %></p>
+    <% classes.forEach((cls) => { %>
+      <tr>
+        <td><%= cls.name %></td>
+        <td><%= cls.year_level %></td>
+        <td><%= cls.created_at %></td>
+      </tr>
+    <% }) %>
+  </table>
+<% } %>
 
-          <% if (item.status === 'pending') { %>
-            <div class="actions">
-              <form method="POST" action="/teacher/claims/<%= item.id %>/approve" style="display:inline;">
-                <button class="button small primary" type="submit">Approve</button>
-              </form>
+<h2>My Homework</h2>
 
-              <form method="POST" action="/teacher/claims/<%= item.id %>/reject" style="display:inline;">
-                <button class="button small danger" type="submit">Reject</button>
-              </form>
-            </div>
+<% if (!homeworkItems.length) { %>
+  <p>No homework posted yet.</p>
+<% } else { %>
+  <table border="1" cellpadding="8">
+    <tr>
+      <th>Class</th>
+      <th>Subject</th>
+      <th>Title</th>
+      <th>Due</th>
+      <th>Minutes</th>
+    </tr>
+
+    <% homeworkItems.forEach((item) => { %>
+      <tr>
+        <td><%= item.class_name %></td>
+        <td><%= item.subject %></td>
+        <td><%= item.title %></td>
+        <td><%= item.due_date %></td>
+        <td><%= item.estimated_minutes %></td>
+      </tr>
+    <% }) %>
+  </table>
+<% } %>
+
+<h2>Kings Credit Claims</h2>
+
+<% if (!creditClaims.length) { %>
+  <p>No claims yet.</p>
+<% } else { %>
+  <table border="1" cellpadding="8">
+    <tr>
+      <th>Student</th>
+      <th>Year</th>
+      <th>Days</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+
+    <% creditClaims.forEach((claim) => { %>
+      <tr>
+        <td><%= claim.student_name %></td>
+        <td><%= claim.year_level %></td>
+        <td><%= claim.challenge_days %></td>
+        <td><%= claim.status %></td>
+        <td>
+          <% if (claim.status === 'pending') { %>
+            <form method="POST" action="/teacher/claims/<%= claim.id %>/approve" style="display:inline;">
+              <button type="submit">Approve</button>
+            </form>
+
+            <form method="POST" action="/teacher/claims/<%= claim.id %>/reject" style="display:inline;">
+              <button type="submit">Reject</button>
+            </form>
           <% } %>
-        </article>
-      <% }) %>
-    </div>
-  <% } %>
-</section>
-
-<section class="card">
-  <div class="actions">
-    <a class="button primary" href="/teacher/homework/new">Post new homework</a>
-    <a class="button" href="/teacher/summary">View class summary</a>
-
-    <form method="POST" action="/teacher/logout" style="display:inline;">
-      <button class="button" type="submit">Log out</button>
-    </form>
-  </div>
-</section>
-
-<section class="card">
-  <div class="section-heading">
-    <h2>Published homework</h2>
-  </div>
-
-  <% if (!homeworkItems || !homeworkItems.length) { %>
-    <p>No homework posted yet.</p>
-  <% } else { %>
-    <div class="task-list">
-      <% homeworkItems.forEach(item => { %>
-        <article class="task-card">
-          <div class="task-top">
-            <div>
-              <h3><%= item.title %></h3>
-              <p class="muted">
-                <%= item.school_name || item.school_id %> ·
-                <%= item.teacher_name || item.teacher_id %> ·
-                <%= item.class_name || item.class_id %> ·
-                <%= item.subject %>
-              </p>
-            </div>
-            <div class="task-badges">
-              <span class="badge">Due <%= formatDateAU(item.due_date) %></span>
-            </div>
-          </div>
-
-          <p><%= item.description %></p>
-          <p class="muted"><strong>Estimated:</strong> <%= item.estimated_minutes %> mins</p>
-        </article>
-      <% }) %>
-    </div>
-  <% } %>
-</section>
+        </td>
+      </tr>
+    <% }) %>
+  </table>
+<% } %>

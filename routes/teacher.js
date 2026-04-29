@@ -1,33 +1,62 @@
 const express = require('express');
-const router = express.Router();
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
 const db = require('../lib/turso');
 const ensureSchema = require('../lib/ensureSchema');
 const requireTeacherAuth = require('../middleware/requireTeacherAuth');
 
-const DEFAULT_SCHOOL_ID = 'school-001';
-const DEFAULT_TEACHER_ID = 'teacher-001';
-const DEFAULT_CLASS_ID = 'class-001';
+const router = express.Router();
 
 router.get('/login', (req, res) => {
-  if (req.signedCookies?.teacher_auth === 'yes') {
-    return res.redirect('/teacher/dashboard');
-  }
-
   res.render('teacher-login', {
     title: 'Teacher Login',
     error: null
   });
 });
 
-router.post('/login', (req, res) => {
-  const username = String(req.body.username || '').trim();
-  const password = String(req.body.password || '');
+router.post('/login', async (req, res) => {
+  try {
+    await ensureSchema();
 
-  const expectedUsername = String(process.env.TEACHER_USERNAME || 'teacher').trim();
-  const expectedPassword = String(process.env.TEACHER_PASSWORD || 'ChangeThisNow123!');
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
 
-  if (username === expectedUsername && password === expectedPassword) {
-    res.cookie('teacher_auth', 'yes', {
+    const result = await db.execute({
+      sql: `
+        SELECT id, school_id, name, email, role, password_hash
+        FROM teachers
+        WHERE lower(email) = ?
+          AND role IN ('teacher', 'admin')
+        LIMIT 1
+      `,
+      args: [email]
+    });
+
+    const teacher = result.rows[0];
+
+    if (!teacher || !teacher.password_hash) {
+      return res.status(401).render('teacher-login', {
+        title: 'Teacher Login',
+        error: 'Incorrect email or password.'
+      });
+    }
+
+    const ok = await bcrypt.compare(password, teacher.password_hash);
+
+    if (!ok) {
+      return res.status(401).render('teacher-login', {
+        title: 'Teacher Login',
+        error: 'Incorrect email or password.'
+      });
+    }
+
+    res.cookie('teacher_auth', {
+      teacherId: teacher.id,
+      schoolId: teacher.school_id,
+      name: teacher.name,
+      role: teacher.role || 'teacher'
+    }, {
       signed: true,
       httpOnly: true,
       sameSite: 'lax',
@@ -36,106 +65,110 @@ router.post('/login', (req, res) => {
       path: '/'
     });
 
-    return res.redirect('/teacher/dashboard');
+    res.redirect('/teacher/dashboard');
+  } catch (error) {
+    console.error('Teacher login error:', error);
+    res.status(500).send(`Teacher login failed. ${error.message}`);
   }
-
-  return res.status(401).render('teacher-login', {
-    title: 'Teacher Login',
-    error: 'Incorrect username or password.'
-  });
 });
 
 router.post('/logout', (req, res) => {
-  res.clearCookie('teacher_auth', {
-    path: '/'
-  });
+  res.clearCookie('teacher_auth', { path: '/' });
   res.redirect('/teacher/login');
 });
 
 router.get('/dashboard', requireTeacherAuth, async (req, res) => {
-  if (!db) {
-    return res.status(500).send('Database is not configured. Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.');
-  }
-
   try {
     await ensureSchema();
 
-    const homeworkResult = await db.execute(`
-      SELECT
-        th.id,
-        th.school_id,
-        th.teacher_id,
-        th.class_id,
-        th.class_name,
-        th.subject,
-        th.title,
-        th.description,
-        th.due_date,
-        th.estimated_minutes,
-        th.created_at,
-        s.name AS school_name,
-        t.name AS teacher_name,
-        c.name AS linked_class_name
-      FROM teacher_homework th
-      LEFT JOIN schools s ON s.id = th.school_id
-      LEFT JOIN teachers t ON t.id = th.teacher_id
-      LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY th.created_at DESC
-    `);
+    const classes = await db.execute({
+      sql: `
+        SELECT id, name, year_level, created_at
+        FROM classes
+        WHERE teacher_id = ?
+        ORDER BY year_level ASC, name ASC
+      `,
+      args: [req.teacherAuth.teacherId]
+    });
 
-    const claimsResult = await db.execute(`
-      SELECT
-        id,
-        school_id,
-        student_name,
-        year_level,
-        challenge_days,
-        claimed_at,
-        status
+    const homework = await db.execute({
+      sql: `
+        SELECT id, class_id, class_name, subject, title, description, due_date, estimated_minutes, created_at
+        FROM teacher_homework
+        WHERE teacher_id = ?
+        ORDER BY created_at DESC
+      `,
+      args: [req.teacherAuth.teacherId]
+    });
+
+    const claims = await db.execute(`
+      SELECT id, student_name, year_level, challenge_days, claimed_at, status
       FROM credit_claims
       ORDER BY claimed_at DESC
     `);
 
     res.render('teacher-dashboard', {
       title: 'Teacher Dashboard',
-      homeworkItems: homeworkResult.rows || [],
-      creditClaims: claimsResult.rows || []
+      teacher: req.teacherAuth,
+      classes: classes.rows || [],
+      homeworkItems: homework.rows || [],
+      creditClaims: claims.rows || []
     });
   } catch (error) {
-    console.error('Error loading teacher dashboard:', error);
+    console.error('Teacher dashboard error:', error);
     res.status(500).send(`Unable to load teacher dashboard. ${error.message}`);
   }
 });
 
-router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
-  try {
-    await ensureSchema();
-
-    await db.execute({
-      sql: `UPDATE credit_claims SET status = 'approved' WHERE id = ?`,
-      args: [req.params.id]
-    });
-
-    res.redirect('/teacher/dashboard');
-  } catch (error) {
-    console.error('Error approving Kings Credit claim:', error);
-    res.status(500).send(`Unable to approve claim. ${error.message}`);
-  }
+router.get('/classes/new', requireTeacherAuth, (req, res) => {
+  res.render('teacher-class-new', {
+    title: 'Add Class',
+    error: null
+  });
 });
 
-router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
+router.post('/classes/new', requireTeacherAuth, async (req, res) => {
   try {
     await ensureSchema();
 
+    const name = String(req.body.name || '').trim();
+    const yearLevel = String(req.body.yearLevel || '').trim();
+
+    if (!name || !yearLevel) {
+      return res.status(400).render('teacher-class-new', {
+        title: 'Add Class',
+        error: 'Class name and year level are required.'
+      });
+    }
+
     await db.execute({
-      sql: `UPDATE credit_claims SET status = 'rejected' WHERE id = ?`,
-      args: [req.params.id]
+      sql: `
+        INSERT INTO classes (
+          id,
+          school_id,
+          teacher_id,
+          name,
+          year_level,
+          created_at
+        )
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `,
+      args: [
+        `class-${crypto.randomUUID()}`,
+        req.teacherAuth.schoolId,
+        req.teacherAuth.teacherId,
+        name,
+        yearLevel
+      ]
     });
 
     res.redirect('/teacher/dashboard');
   } catch (error) {
-    console.error('Error rejecting Kings Credit claim:', error);
-    res.status(500).send(`Unable to reject claim. ${error.message}`);
+    console.error('Add class error:', error);
+    res.status(500).render('teacher-class-new', {
+      title: 'Add Class',
+      error: `Unable to add class. ${error.message}`
+    });
   }
 });
 
@@ -143,37 +176,23 @@ router.get('/homework/new', requireTeacherAuth, async (req, res) => {
   try {
     await ensureSchema();
 
-    const schoolsResult = await db.execute(`
-      SELECT id, name, short_code
-      FROM schools
-      ORDER BY name ASC
-    `);
-
-    const teachersResult = await db.execute(`
-      SELECT id, school_id, name, email
-      FROM teachers
-      ORDER BY name ASC
-    `);
-
-    const classesResult = await db.execute(`
-      SELECT id, school_id, teacher_id, name, year_level
-      FROM classes
-      ORDER BY name ASC
-    `);
+    const classes = await db.execute({
+      sql: `
+        SELECT id, name, year_level
+        FROM classes
+        WHERE teacher_id = ?
+        ORDER BY year_level ASC, name ASC
+      `,
+      args: [req.teacherAuth.teacherId]
+    });
 
     res.render('teacher-homework-new', {
       title: 'Post Homework',
-      schools: schoolsResult.rows || [],
-      teachers: teachersResult.rows || [],
-      classes: classesResult.rows || [],
-      defaults: {
-        schoolId: DEFAULT_SCHOOL_ID,
-        teacherId: DEFAULT_TEACHER_ID,
-        classId: DEFAULT_CLASS_ID
-      }
+      classes: classes.rows || [],
+      error: null
     });
   } catch (error) {
-    console.error('Error loading teacher homework form:', error);
+    console.error('Load homework form error:', error);
     res.status(500).send(`Unable to load homework form. ${error.message}`);
   }
 });
@@ -182,40 +201,47 @@ router.post('/homework/new', requireTeacherAuth, async (req, res) => {
   try {
     await ensureSchema();
 
-    const schoolId = (req.body.schoolId || DEFAULT_SCHOOL_ID).trim();
-    const teacherId = (req.body.teacherId || DEFAULT_TEACHER_ID).trim();
-    const classId = (req.body.classId || DEFAULT_CLASS_ID).trim();
-    const subject = (req.body.subject || '').trim();
-    const title = (req.body.title || '').trim();
-    const description = (req.body.description || '').trim();
-    const dueDate = (req.body.dueDate || '').trim();
+    const classId = String(req.body.classId || '').trim();
+    const subject = String(req.body.subject || '').trim();
+    const title = String(req.body.title || '').trim();
+    const description = String(req.body.description || '').trim();
+    const dueDate = String(req.body.dueDate || '').trim();
     const estimatedMinutes = Number(req.body.estimatedMinutes) || 20;
 
-    if (!schoolId || !teacherId || !classId || !subject || !title || !description || !dueDate) {
-      return res.status(400).send('Missing required homework fields.');
+    if (!classId || !subject || !title || !description || !dueDate) {
+      const classes = await db.execute({
+        sql: `
+          SELECT id, name, year_level
+          FROM classes
+          WHERE teacher_id = ?
+          ORDER BY year_level ASC, name ASC
+        `,
+        args: [req.teacherAuth.teacherId]
+      });
+
+      return res.status(400).render('teacher-homework-new', {
+        title: 'Post Homework',
+        classes: classes.rows || [],
+        error: 'All homework fields are required.'
+      });
     }
 
-    const classLookup = await db.execute({
-      sql: `SELECT id, name FROM classes WHERE id = ? LIMIT 1`,
-      args: [classId]
+    const classResult = await db.execute({
+      sql: `
+        SELECT id, name
+        FROM classes
+        WHERE id = ?
+          AND teacher_id = ?
+        LIMIT 1
+      `,
+      args: [classId, req.teacherAuth.teacherId]
     });
 
-    const selectedClass = (classLookup.rows || [])[0];
-    const className = selectedClass?.name || 'Unknown Class';
+    const selectedClass = classResult.rows[0];
 
-    const newItem = {
-      id: `hw-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      schoolId,
-      teacherId,
-      classId,
-      className,
-      subject,
-      title,
-      description,
-      dueDate,
-      estimatedMinutes,
-      createdAt: new Date().toISOString()
-    };
+    if (!selectedClass) {
+      return res.status(403).send('You can only post homework to your own classes.');
+    }
 
     await db.execute({
       sql: `
@@ -231,64 +257,57 @@ router.post('/homework/new', requireTeacherAuth, async (req, res) => {
           due_date,
           estimated_minutes,
           created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `,
       args: [
-        newItem.id,
-        newItem.schoolId,
-        newItem.teacherId,
-        newItem.classId,
-        newItem.className,
-        newItem.subject,
-        newItem.title,
-        newItem.description,
-        newItem.dueDate,
-        newItem.estimatedMinutes,
-        newItem.createdAt
+        `hw-${crypto.randomUUID()}`,
+        req.teacherAuth.schoolId,
+        req.teacherAuth.teacherId,
+        selectedClass.id,
+        selectedClass.name,
+        subject,
+        title,
+        description,
+        dueDate,
+        estimatedMinutes
       ]
     });
 
     res.redirect('/teacher/dashboard');
   } catch (error) {
-    console.error('Error creating teacher homework:', error);
+    console.error('Create homework error:', error);
     res.status(500).send(`Unable to save homework. ${error.message}`);
   }
 });
 
-router.get('/summary', requireTeacherAuth, async (req, res) => {
+router.post('/claims/:id/approve', requireTeacherAuth, async (req, res) => {
   try {
     await ensureSchema();
 
-    const result = await db.execute(`
-      SELECT
-        th.id,
-        th.school_id,
-        th.teacher_id,
-        th.class_id,
-        th.class_name,
-        th.subject,
-        th.title,
-        th.description,
-        th.due_date,
-        th.estimated_minutes,
-        th.created_at,
-        s.name AS school_name,
-        t.name AS teacher_name,
-        c.name AS linked_class_name
-      FROM teacher_homework th
-      LEFT JOIN schools s ON s.id = th.school_id
-      LEFT JOIN teachers t ON t.id = th.teacher_id
-      LEFT JOIN classes c ON c.id = th.class_id
-      ORDER BY s.name ASC, th.class_name ASC, th.due_date ASC
-    `);
-
-    res.render('teacher-summary', {
-      title: 'Class Summary',
-      homeworkItems: result.rows || []
+    await db.execute({
+      sql: `UPDATE credit_claims SET status = 'approved' WHERE id = ?`,
+      args: [req.params.id]
     });
+
+    res.redirect('/teacher/dashboard');
   } catch (error) {
-    console.error('Error loading teacher summary:', error);
-    res.status(500).send(`Unable to load class summary. ${error.message}`);
+    res.status(500).send(`Unable to approve claim. ${error.message}`);
+  }
+});
+
+router.post('/claims/:id/reject', requireTeacherAuth, async (req, res) => {
+  try {
+    await ensureSchema();
+
+    await db.execute({
+      sql: `UPDATE credit_claims SET status = 'rejected' WHERE id = ?`,
+      args: [req.params.id]
+    });
+
+    res.redirect('/teacher/dashboard');
+  } catch (error) {
+    res.status(500).send(`Unable to reject claim. ${error.message}`);
   }
 });
 

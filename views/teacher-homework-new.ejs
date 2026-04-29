@@ -1,73 +1,38 @@
-<section class="page-header">
-  <div>
-    <h1>Post Homework</h1>
-    <p class="lede">Publish homework in a way that is ready for multiple schools later.</p>
-  </div>
-</section>
+<h1>Post Homework</h1>
 
-<section class="card">
-  <form method="POST" action="/teacher/homework/new" class="stack-form">
-    <div class="field">
-      <label for="schoolId">School</label>
-      <select id="schoolId" name="schoolId" required>
-        <% schools.forEach(school => { %>
-          <option value="<%= school.id %>" <%= school.id === defaults.schoolId ? 'selected' : '' %>>
-            <%= school.name %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
+<% if (error) { %>
+  <p style="color:red;"><%= error %></p>
+<% } %>
 
-    <div class="field">
-      <label for="teacherId">Teacher</label>
-      <select id="teacherId" name="teacherId" required>
-        <% teachers.forEach(teacher => { %>
-          <option value="<%= teacher.id %>" <%= teacher.id === defaults.teacherId ? 'selected' : '' %>>
-            <%= teacher.name %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
+<% if (!classes.length) { %>
+  <p>You need to add a class before posting homework.</p>
+  <p><a href="/teacher/classes/new">Add Class</a></p>
+<% } else { %>
+  <form method="POST" action="/teacher/homework/new">
+    <label>Class</label><br>
+    <select name="classId" required>
+      <% classes.forEach((cls) => { %>
+        <option value="<%= cls.id %>"><%= cls.name %> — Year <%= cls.year_level %></option>
+      <% }) %>
+    </select><br><br>
 
-    <div class="field">
-      <label for="classId">Class</label>
-      <select id="classId" name="classId" required>
-        <% classes.forEach(classItem => { %>
-          <option value="<%= classItem.id %>" <%= classItem.id === defaults.classId ? 'selected' : '' %>>
-            <%= classItem.name %><%= classItem.year_level ? ` (Year ${classItem.year_level})` : '' %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
+    <label>Subject</label><br>
+    <input type="text" name="subject" required><br><br>
 
-    <div class="field">
-      <label for="subject">Subject</label>
-      <input id="subject" name="subject" type="text" placeholder="e.g. English" required />
-    </div>
+    <label>Title</label><br>
+    <input type="text" name="title" required><br><br>
 
-    <div class="field">
-      <label for="title">Homework title</label>
-      <input id="title" name="title" type="text" placeholder="e.g. Complete persuasive paragraph" required />
-    </div>
+    <label>Description</label><br>
+    <textarea name="description" rows="5" required></textarea><br><br>
 
-    <div class="field">
-      <label for="description">Description</label>
-      <textarea id="description" name="description" rows="5" placeholder="Instructions, page numbers, checklist..." required></textarea>
-    </div>
+    <label>Due Date</label><br>
+    <input type="date" name="dueDate" required><br><br>
 
-    <div class="field">
-      <label for="dueDate">Due date</label>
-      <input id="dueDate" name="dueDate" type="date" required />
-    </div>
+    <label>Estimated Minutes</label><br>
+    <input type="number" name="estimatedMinutes" value="20" min="5"><br><br>
 
-    <div class="field">
-      <label for="estimatedMinutes">Estimated minutes</label>
-      <input id="estimatedMinutes" name="estimatedMinutes" type="number" min="5" step="5" value="20" />
-    </div>
-
-    <div class="actions">
-      <button class="button primary" type="submit">Publish homework</button>
-      <a class="button" href="/teacher/dashboard">Cancel</a>
-    </div>
+    <button type="submit">Post Homework</button>
   </form>
-</section>
+<% } %>
+
+<p><a href="/teacher/dashboard">Back to Dashboard</a></p>
